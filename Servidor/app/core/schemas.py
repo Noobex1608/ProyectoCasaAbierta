@@ -36,6 +36,21 @@ class StudentEnrollRequest(BaseModel):
         return v.strip()
 
 
+# Alias simplificado para compatibilidad (según sugerencia del usuario)
+class EnrollmentRequest(BaseModel):
+    """Request schema simplificado para enrollment"""
+    student_id: str = Field(..., description="ID único del estudiante (Matrícula)", example="A00123456")
+    full_name: str = Field(..., description="Nombre completo", example="Juan Pérez")
+    image_base64: str = Field(..., description="Imagen en formato Base64", example="data:image/jpeg;base64,/9j/4AAQSk...")
+
+
+class EnrollmentResponse(BaseModel):
+    """Response schema simplificado para enrollment"""
+    status: str
+    message: str
+    student_id: str
+
+
 class StudentEnrollResponse(BaseModel):
     """Response schema for student enrollment"""
     student_id: str
@@ -58,10 +73,19 @@ class StudentInfo(BaseModel):
 # ---- Face Recognition Schemas ----
 
 class FaceEmbedding(BaseModel):
-    """Face embedding vector schema"""
-    embedding: List[float] = Field(..., min_length=128, max_length=512)
-    model: str = Field(default="Facenet")
+    """Face embedding vector schema for pgvector storage"""
+    vector: List[float] = Field(..., min_length=128, max_length=512, description="Embedding vector for pgvector")
+    model: str = Field(default="Facenet512")
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "vector": [0.123, -0.98, 0.55],  # ... 512 valores para Facenet512
+                "model": "Facenet512",
+                "confidence": 0.95
+            }
+        }
 
 
 class FaceDetectionResult(BaseModel):

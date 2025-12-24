@@ -1,17 +1,19 @@
 """
 Smart Classroom AI - DeepFace Service
 Wrapper for facial recognition and emotion analysis using DeepFace
+
+Optimizado para evitar cold start - el modelo se carga una sola vez al inicio.
 """
 import cv2
 import numpy as np
-from typing import List, Dict, Any, Optional, Tuple
-from PIL import Image
-import io
 import base64
+import io
+from typing import List, Dict, Any, Optional
+from PIL import Image
 from deepface import DeepFace
 from app.core.config import settings
 from app.core.logger import logger
-from app.core.constants import EmotionType, FaceRecognitionModel
+from app.core.constants import EmotionType
 from app.core.exceptions import (
     FaceNotDetectedException,
     MultipleFacesDetectedException,
@@ -37,7 +39,7 @@ class FaceRecognitionService:
             image: Input image as numpy array (BGR format)
         
         Returns:
-            128-dimensional embedding vector (for Facenet)
+            512-dimensional embedding vector (for Facenet512)
         
         Raises:
             FaceNotDetectedException: If no face found
@@ -46,11 +48,12 @@ class FaceRecognitionService:
         """
         try:
             # Use DeepFace.represent to get embedding
+            # El modelo ya está cargado en RAM gracias al lifespan de main.py
             embeddings = DeepFace.represent(
                 img_path=image,
                 model_name=self.model,
                 detector_backend=self.detector,
-                enforce_detection=True,
+                enforce_detection=True,  # Rechaza si no hay cara (bueno para registro)
                 align=True
             )
             
@@ -267,6 +270,168 @@ class EmotionAnalysisService:
         return results
 
 
+# ============================================================================
+# FUNCIONES OPTIMIZADAS PARA USO DIRECTO (Sugeridas por el usuario)
+# ============================================================================
+
+def load_image_from_base64(base64_str: str) -> np.ndarray:
+    """
+    Convierte un string Base64 en una imagen de OpenCV (numpy array).
+    
+    Args:
+        base64_str: String Base64 de la imagen (puede incluir header data:image/jpeg;base64,)
+    
+    Returns:
+        Imagen como numpy array en formato BGR (OpenCV)
+    
+    Raises:
+        InvalidImageException: Si la imagen no se puede decodificar
+    """
+    try:
+        # 1. Limpiar el header si viene del frontend (ej: "data:image/jpeg;base64,Ax...")
+        if "," in base64_str:
+            base64_str = base64_str.split(",")[1]
+        
+        # 2. Decodificar a bytes
+        image_bytes = base64.b64decode(base64_str)
+        
+        # 3. Convertir bytes a array de numpy
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        
+        # 4. Decodificar imagen para OpenCV
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise ValueError("No se pudo decodificar la imagen Base64.")
+        
+        return img
+    
+    except Exception as e:
+        logger.error(f"Error al procesar imagen base64: {str(e)}")
+        raise InvalidImageException(f"Invalid base64 image: {str(e)}")
+
+
+async def get_face_embedding(image_base64: str) -> List[float]:
+    """
+    Recibe una imagen en Base64, detecta la cara y devuelve el vector (embedding).
+    
+    Esta es la función principal que debes usar desde tus endpoints.
+    
+    Args:
+        image_base64: Imagen codificada en Base64
+    
+    Returns:
+        Lista de 512 floats (vector de embedding para Facenet512)
+    
+    Raises:
+        InvalidImageException: Si la imagen no es válida
+        FaceNotDetectedException: Si no se detecta ningún rostro
+        FaceRecognitionFailedException: Si falla el procesamiento
+    """
+    try:
+        # 1. Convertir texto a imagen real
+        img = load_image_from_base64(image_base64)
+        
+        # 2. Generar embedding con DeepFace
+        # enforce_detection=True lanza error si no hay cara (bueno para Registro)
+        # detector_backend="opencv" es rápido, "mediapipe" es más preciso
+        results = DeepFace.represent(
+            img_path=img,
+            model_name=settings.FACE_RECOGNITION_MODEL,
+            enforce_detection=True,  # Obligatorio para enrollment
+            detector_backend=settings.FACE_DETECTOR_BACKEND
+        )
+        
+        # DeepFace devuelve una lista de resultados, tomamos el primero
+        if not results:
+            raise FaceNotDetectedException("No se detectó ningún rostro en la imagen.")
+        
+        embedding = results[0]["embedding"]
+        logger.info(f"✅ Embedding generado: {len(embedding)} dimensiones")
+        return embedding
+    
+    except ValueError as ve:
+        # Errores de lógica (ej: no hay cara)
+        if "Face could not be detected" in str(ve):
+            raise FaceNotDetectedException(str(ve))
+        logger.warning(f"Advertencia de IA: {str(ve)}")
+        raise FaceRecognitionFailedException(str(ve))
+    except Exception as e:
+        # Errores técnicos
+        logger.error(f"Error crítico en DeepFace: {str(e)}")
+        raise FaceRecognitionFailedException(str(e))
+
+
+async def analyze_face_emotion(image_base64: str) -> Dict[str, Any]:
+    """
+    Analiza la emoción dominante en la imagen.
+    
+    Args:
+        image_base64: Imagen codificada en Base64
+    
+    Returns:
+        Dict con emoción dominante y confianza:
+        {
+            "dominant_emotion": "happy",
+            "confidence": 0.89,
+            "all_emotions": {"happy": 89.2, "sad": 5.1, ...}
+        }
+    """
+    try:
+        img = load_image_from_base64(image_base64)
+        
+        analysis = DeepFace.analyze(
+            img_path=img,
+            actions=['emotion'],
+            enforce_detection=False,  # Más permisivo para emociones
+            detector_backend=settings.FACE_DETECTOR_BACKEND,
+            silent=True
+        )
+        
+        # DeepFace devuelve una lista si detecta varias caras, o un dict si es una.
+        # Normalizamos para trabajar siempre con el primer resultado.
+        result = analysis[0] if isinstance(analysis, list) else analysis
+        
+        emotions = result["emotion"]
+        dominant = result["dominant_emotion"]
+        
+        # Mapear a nuestros tipos de emoción
+        mapped_emotion = _map_emotion_to_classroom(dominant)
+        
+        return {
+            "dominant_emotion": mapped_emotion,
+            "confidence": emotions[dominant],
+            "all_emotions": emotions
+        }
+    
+    except Exception as e:
+        logger.error(f"Error analizando emoción: {str(e)}")
+        return {"dominant_emotion": "unknown", "confidence": 0.0, "error": str(e)}
+
+
+def _map_emotion_to_classroom(deepface_emotion: str) -> str:
+    """
+    Mapea emociones de DeepFace a nuestras emociones de classroom.
+    
+    DeepFace: angry, disgust, fear, happy, sad, surprise, neutral
+    Nosotros: happy, sad, angry, fear, surprise, neutral, bored, sleepy, attentive
+    """
+    emotion_mapping = {
+        "happy": EmotionType.HAPPY.value,
+        "sad": EmotionType.SAD.value,
+        "angry": EmotionType.ANGRY.value,
+        "fear": EmotionType.FEAR.value,
+        "surprise": EmotionType.SURPRISE.value,
+        "neutral": EmotionType.NEUTRAL.value,
+        "disgust": EmotionType.DISGUST.value
+    }
+    return emotion_mapping.get(deepface_emotion.lower(), EmotionType.NEUTRAL.value)
+
+
+# ============================================================================
+# CLASES LEGACY (Mantener compatibilidad con código existente)
+# ============================================================================
+
 class ImageProcessingService:
     """Utility service for image processing"""
     
@@ -274,36 +439,9 @@ class ImageProcessingService:
     def base64_to_image(base64_string: str) -> np.ndarray:
         """
         Convert base64 string to numpy array (OpenCV format)
-        
-        Args:
-            base64_string: Base64 encoded image
-        
-        Returns:
-            Image as numpy array in BGR format
+        LEGACY: Usa load_image_from_base64() en código nuevo
         """
-        try:
-            # Remove data URL prefix if present
-            if "," in base64_string:
-                base64_string = base64_string.split(",")[1]
-            
-            # Decode base64
-            image_bytes = base64.b64decode(base64_string)
-            
-            # Convert to PIL Image
-            pil_image = Image.open(io.BytesIO(image_bytes))
-            
-            # Convert to numpy array (RGB)
-            image_array = np.array(pil_image)
-            
-            # Convert RGB to BGR for OpenCV
-            if len(image_array.shape) == 3 and image_array.shape[2] == 3:
-                image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-            
-            return image_array
-        
-        except Exception as e:
-            logger.error(f"Failed to convert base64 to image: {str(e)}")
-            raise InvalidImageException(f"Invalid base64 image: {str(e)}")
+        return load_image_from_base64(base64_string)
     
     @staticmethod
     def validate_image(image: np.ndarray) -> bool:

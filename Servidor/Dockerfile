@@ -17,13 +17,14 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install system dependencies for OpenCV and TensorFlow
+# CRÍTICO: libgl1-mesa-glx y libglib2.0-0 son obligatorios para OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
-    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory

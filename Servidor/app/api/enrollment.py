@@ -4,8 +4,16 @@ Endpoints for student enrollment
 """
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
 from typing import Optional
-from app.core.schemas import BaseResponse, StudentEnrollRequest, StudentEnrollResponse
+from app.core.schemas import (
+    BaseResponse, 
+    StudentEnrollRequest, 
+    StudentEnrollResponse,
+    EnrollmentRequest,
+    EnrollmentResponse
+)
 from app.services.enrollment_service import EnrollmentService
+from app.services.face_service import get_face_embedding
+from app.db.supabase_client import get_supabase
 from app.core.logger import logger
 
 router = APIRouter(prefix="/enrollment", tags=["Enrollment"])
@@ -185,4 +193,92 @@ async def list_students(active_only: bool = True, limit: int = 100, offset: int 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
+        )
+
+
+# ============================================================================
+# ENDPOINT OPTIMIZADO - Usa las funciones nuevas de face_service.py
+# ============================================================================
+
+@router.post(
+    "/enroll-v2",
+    response_model=EnrollmentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Enroll student (Optimized)",
+    description="Versión optimizada del endpoint de enrollment que usa las funciones directas de face_service"
+)
+async def enroll_student_optimized(payload: EnrollmentRequest):
+    """
+    Registra un nuevo estudiante (Versión Optimizada):
+    1. Recibe la foto en Base64.
+    2. Genera el vector facial (Embedding) usando DeepFace.
+    3. Guarda ID, Nombre y Vector en Supabase.
+    
+    Esta versión usa las funciones optimizadas de face_service.py
+    y mapea correctamente a tu esquema de BD.
+    """
+    try:
+        logger.info(f"📝 Iniciando registro para: {payload.full_name} ({payload.student_id})")
+
+        # PASO 1: Obtener el vector facial (Lógica de IA)
+        # Esto llama a tu función creada anteriormente en face_service.py
+        # Nota: El modelo ya está en RAM gracias al lifespan, no hay cold start
+        vector_embedding = await get_face_embedding(payload.image_base64)
+        
+        logger.info(f"✅ Vector generado. Dimensiones: {len(vector_embedding)}")
+
+        # PASO 2: Guardar en Supabase (Lógica de Base de Datos)
+        # --- CORRECCIÓN CRÍTICA: Mapeamos los datos para que coincidan EXACTAMENTE con tu tabla 'students' ---
+        supabase = get_supabase()
+        
+        student_data = {
+            "student_id": payload.student_id,           # VARCHAR (UNIQUE, NOT NULL)
+            "name": payload.full_name,                  # Tu tabla usa 'name', no 'full_name'
+            "email": f"{payload.student_id}@tu-universidad.edu.ec",  # Opcional (puede ser None)
+            "face_embedding": vector_embedding,         # USER-DEFINED (vector(512) o vector(128))
+            "is_active": True,                          # BOOLEAN (default true)
+            # "metadata": None,                         # JSONB (opcional)
+            # "enrolled_at" se genera automáticamente con DEFAULT now()
+        }
+
+        logger.info(f"📤 Insertando en tabla 'students': {student_data['student_id']} - {student_data['name']}")
+
+        # Insertamos en la tabla 'students'
+        response = supabase.table("students").insert(student_data).execute()
+
+        # Verificar si hubo error en la inserción
+        if not response.data:
+            raise Exception("Error al insertar en base de datos (posible ID duplicado o error de constraint).")
+
+        logger.info(f"✅ Estudiante {payload.student_id} registrado exitosamente en BD")
+        logger.info(f"📊 Registro guardado: {response.data[0].get('id', 'N/A')} - {response.data[0].get('name', 'N/A')}")
+
+        return EnrollmentResponse(
+            status="success", 
+            message="Estudiante registrado exitosamente en el sistema biométrico.",
+            student_id=payload.student_id
+        )
+
+    except ValueError as ve:
+        # Errores de validación (ej. no se detectó cara)
+        logger.warning(f"⚠️ Error de validación: {str(ve)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=str(ve)
+        )
+    except Exception as e:
+        # Errores inesperados (DB desconectada, error de DeepFace, ID duplicado)
+        error_message = str(e)
+        logger.error(f"❌ Error crítico en enrollment: {error_message}")
+        
+        # Detectar error de ID duplicado
+        if "duplicate key" in error_message.lower() or "unique constraint" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"El estudiante {payload.student_id} ya está registrado en el sistema."
+            )
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error interno del servidor: {error_message}"
         )

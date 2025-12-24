@@ -3,7 +3,12 @@ Smart Classroom AI - Enrollment Service
 Business logic for student enrollment with facial biometrics
 """
 from typing import Dict, Any
-from app.services.face_service import FaceRecognitionService, ImageProcessingService
+from app.services.face_service import (
+    FaceRecognitionService, 
+    ImageProcessingService,
+    get_face_embedding,  # Nueva función optimizada
+    load_image_from_base64
+)
 from app.db.crud import StudentCRUD
 from app.core.logger import logger
 from app.core.exceptions import DuplicateStudentException, FaceNotDetectedException
@@ -148,6 +153,83 @@ class EnrollmentService:
         except Exception as e:
             logger.error(f"Failed to update photo for {student_id}: {str(e)}")
             return {
+                "success": False,
+                "message": f"Update error: {str(e)}"
+            }
+    
+    async def enroll_student_optimized(
+        self,
+        student_id: str,
+        full_name: str,
+        image_base64: str
+    ) -> Dict[str, Any]:
+        """
+        Versión optimizada del enrollment usando las nuevas funciones de face_service.
+        
+        Esta función usa get_face_embedding() directamente, que es más rápida
+        porque el modelo ya está pre-cargado en memoria.
+        
+        Args:
+            student_id: ID único del estudiante
+            full_name: Nombre completo
+            image_base64: Imagen en Base64 (con o sin header)
+        
+        Returns:
+            Dict con resultado del enrollment
+        """
+        try:
+            logger.info(f"📝 Enrollment optimizado para: {full_name} ({student_id})")
+            
+            # Generar embedding usando la función optimizada
+            # Esta función ya maneja la conversión de base64 internamente
+            embedding = await get_face_embedding(image_base64)
+            
+            logger.info(f"✅ Embedding generado: {len(embedding)} dimensiones")
+            
+            # Guardar en base de datos
+            student_record = await self.student_crud.create(
+                student_id=student_id,
+                name=full_name,
+                face_embedding=embedding,
+                email=None,
+                metadata=None
+            )
+            
+            logger.info(f"✅ Estudiante {student_id} registrado exitosamente")
+            
+            return {
+                "success": True,
+                "message": "Estudiante registrado exitosamente",
+                "student_id": student_id,
+                "name": full_name,
+                "embedding_dimension": len(embedding),
+                "enrolled_at": student_record.get("enrolled_at", "N/A")
+            }
+        
+        except FaceNotDetectedException as e:
+            logger.warning(f"⚠️ No se detectó cara para {student_id}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"No se detectó ningún rostro en la imagen: {str(e)}",
+                "student_id": student_id
+            }
+        
+        except DuplicateStudentException as e:
+            logger.warning(f"⚠️ ID duplicado: {student_id}")
+            return {
+                "success": False,
+                "message": f"El estudiante {student_id} ya está registrado",
+                "student_id": student_id
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ Error crítico en enrollment: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error al registrar estudiante: {str(e)}",
+                "student_id": student_id
+            }
+
                 "success": False,
                 "message": str(e),
                 "student_id": student_id
