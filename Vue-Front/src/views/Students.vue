@@ -246,8 +246,8 @@ const loadStudents = async () => {
   loading.value = true
   try {
     students.value = await enrollmentService.getStudents()
-  } catch (error) {
-    console.error('Error cargando estudiantes:', error)
+  } catch {
+    // Error loading students
   } finally {
     loading.value = false
   }
@@ -288,8 +288,7 @@ const deleteStudent = async () => {
     await enrollmentService.deleteStudent(studentToDelete.value.student_id)
     students.value = students.value.filter(s => s.student_id !== studentToDelete.value!.student_id)
     studentToDelete.value = null
-  } catch (error) {
-    console.error('Error eliminando estudiante:', error)
+  } catch {
     alert('Error al eliminar el estudiante')
   } finally {
     deleting.value = false

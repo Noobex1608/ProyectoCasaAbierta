@@ -194,8 +194,7 @@ const startCamera = async () => {
       mediaStream.value = stream
       isCameraActive.value = true
     }
-  } catch (error) {
-    console.error('Error activando cámara:', error)
+  } catch {
     alert('No se pudo acceder a la cámara')
   }
 }
@@ -239,13 +238,11 @@ const captureAndVerify = async () => {
       image: file
     })
 
-    console.log('✅ Attendance result:', result)
     verificationResult.value = result
     
     // If student recognized, analyze emotion and save to DB
     if (result.success && result.student_id) {
       try {
-        console.log('🎭 Analyzing emotion for student:', result.student_id, 'in class:', selectedClassId.value)
         const emotionFile = new File([blob], 'emotion.jpg', { type: 'image/jpeg' })
         const emotionResult = await emotionsService.analyzeEmotion({
           class_id: selectedClassId.value.toString(),
@@ -253,22 +250,15 @@ const captureAndVerify = async () => {
           student_id: result.student_id.toString()
         })
         
-        console.log('🎭 Emotion result:', emotionResult)
-        
         if (emotionResult.data?.emotions?.[0]) {
           detectedEmotion.value = {
             emotion: emotionResult.data.emotions[0].emotion,
             confidence: emotionResult.data.emotions[0].confidence
           }
-          console.log('✅ Emotion detected:', detectedEmotion.value)
-        } else {
-          console.warn('⚠️ No emotions in response:', emotionResult)
         }
       } catch (emotionError) {
-        console.error('❌ Emotion analysis failed:', emotionError)
+        // Emotion analysis failed silently
       }
-    } else {
-      console.warn('⚠️ No student_id in attendance result or not successful:', result)
     }
     
     if (result.success) {
@@ -299,8 +289,8 @@ const loadActiveClasses = async () => {
     } else if (activeClasses.value.length > 0 && activeClasses.value[0]) {
       selectedClassId.value = activeClasses.value[0].id
     }
-  } catch (error) {
-    console.error('Error cargando clases:', error)
+  } catch {
+    // Error loading classes
   }
 }
 
@@ -309,8 +299,8 @@ const loadAttendanceRecords = async () => {
 
   try {
     attendanceRecords.value = await attendanceService.getClassAttendance(Number(selectedClassId.value))
-  } catch (error) {
-    console.error('Error cargando registros:', error)
+  } catch {
+    // Error loading records
   }
 }
 

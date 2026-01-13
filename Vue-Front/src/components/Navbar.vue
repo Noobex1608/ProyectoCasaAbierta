@@ -139,8 +139,8 @@ const handleLogout = async () => {
   try {
     await signOut()
     router.push('/login')
-  } catch (error) {
-    console.error('Error al cerrar sesión:', error)
+  } catch {
+    // Error signing out
   }
 }
 </script>

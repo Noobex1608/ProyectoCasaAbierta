@@ -287,8 +287,8 @@ const loadClasses = async () => {
   loading.value = true
   try {
     classes.value = await classesService.getClasses()
-  } catch (error) {
-    console.error('Error cargando clases:', error)
+  } catch {
+    // Error loading classes
   } finally {
     loading.value = false
   }
@@ -324,8 +324,7 @@ const endClass = async () => {
     await classesService.endClass(classToEnd.value.class_id)
     await loadClasses()
     classToEnd.value = null
-  } catch (error) {
-    console.error('Error finalizando clase:', error)
+  } catch {
     alert('Error al finalizar la clase')
   } finally {
     ending.value = false
@@ -344,8 +343,7 @@ const deleteClass = async () => {
     await classesService.deleteClass(classToDelete.value.class_id)
     classes.value = classes.value.filter(c => c.class_id !== classToDelete.value!.class_id)
     classToDelete.value = null
-  } catch (error) {
-    console.error('Error eliminando clase:', error)
+  } catch {
     alert('Error al eliminar la clase')
   } finally {
     deleting.value = false

@@ -14,8 +14,27 @@ const session = ref<Session | null>(null)
 const loading = ref(true)
 const profile = ref<UserProfile | null>(null)
 
+// Email del administrador/secretaria
+const ADMIN_EMAIL = 'secretaria@uleam.com'
+
 export function useAuth() {
   const isAuthenticated = computed(() => !!user.value)
+  
+  // Verificar si el usuario es administrador/secretaria
+  const isAdmin = computed(() => {
+    return profile.value?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+  })
+  
+  // Verificar si el usuario es profesor
+  const isTeacher = computed(() => {
+    return isAuthenticated.value && !isAdmin.value
+  })
+  
+  // Obtener el rol del usuario
+  const userRole = computed(() => {
+    if (!isAuthenticated.value) return null
+    return isAdmin.value ? 'admin' : 'teacher'
+  })
 
   /**
    * Registrar nuevo usuario
@@ -49,7 +68,6 @@ export function useAuth() {
 
       return { data, error: null }
     } catch (error: any) {
-      console.error('Error en signUp:', error)
       return { data: null, error: error.message }
     }
   }
@@ -81,7 +99,6 @@ export function useAuth() {
 
       return { data, error: null }
     } catch (error: any) {
-      console.error('Error en signIn:', error)
       return { data: null, error: error.message }
     }
   }
@@ -98,7 +115,6 @@ export function useAuth() {
       session.value = null
       profile.value = null
     } catch (error) {
-      console.error('Error al cerrar sesión:', error)
       throw error
     }
   }
@@ -123,8 +139,7 @@ export function useAuth() {
       }
       
       return currentUser
-    } catch (error) {
-      console.error('Error obteniendo usuario actual:', error)
+    } catch {
       return null
     }
   }
@@ -221,8 +236,8 @@ export function useAuth() {
           profile.value = null
         }
       })
-    } catch (error) {
-      console.error('Error inicializando autenticación:', error)
+    } catch {
+      // Error initializing auth
     } finally {
       loading.value = false
     }
@@ -235,6 +250,9 @@ export function useAuth() {
     loading,
     profile,
     isAuthenticated,
+    isAdmin,
+    isTeacher,
+    userRole,
 
     // Métodos
     signUp,

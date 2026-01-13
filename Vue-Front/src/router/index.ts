@@ -19,6 +19,19 @@ const routes = [
       title: 'Iniciar Sesión'
     }
   },
+  // =====================
+  // RUTAS DE ADMINISTRADOR
+  // =====================
+  {
+    path: '/admin/students',
+    name: 'AdminStudents',
+    component: () => import('@/views/AdminStudents.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Gestión de Estudiantes - Admin',
+      role: 'admin'
+    }
+  },
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -127,7 +140,7 @@ const router = createRouter({
 
 // Navigation Guard
 router.beforeEach(async (to, _from, next) => {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, isAdmin, isTeacher } = useAuth()
 
   // Actualizar título de la página
   document.title = `${to.meta.title || 'Smart Classroom AI'} - Smart Classroom AI`
@@ -141,6 +154,7 @@ router.beforeEach(async (to, _from, next) => {
 
   // Verificar autenticación
   const requiresAuth = to.meta.requiresAuth !== false
+  const requiredRole = to.meta.role as string | undefined
 
   if (requiresAuth && !isAuthenticated.value) {
     // Ruta protegida sin autenticación -> redirigir a login
@@ -149,8 +163,21 @@ router.beforeEach(async (to, _from, next) => {
       query: { redirect: to.fullPath }
     })
   } else if (to.path === '/login' && isAuthenticated.value) {
-    // Usuario autenticado intentando acceder a login -> redirigir a dashboard
+    // Usuario autenticado intentando acceder a login -> redirigir según rol
+    if (isAdmin.value) {
+      next('/admin/students')
+    } else {
+      next('/dashboard')
+    }
+  } else if (requiredRole === 'admin' && !isAdmin.value) {
+    // Ruta de admin pero usuario no es admin -> redirigir a dashboard
     next('/dashboard')
+  } else if (to.path.startsWith('/admin') && isTeacher.value) {
+    // Profesor intentando acceder a rutas de admin -> redirigir a dashboard
+    next('/dashboard')
+  } else if (to.path === '/dashboard' && isAdmin.value) {
+    // Admin intentando acceder a dashboard de profesor -> redirigir a admin
+    next('/admin/students')
   } else {
     // Permitir navegación
     next()

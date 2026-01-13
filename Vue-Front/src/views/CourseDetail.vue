@@ -80,13 +80,13 @@
         <h2 class="text-xl font-bold text-gray-900 mb-4">🚀 Acciones Rápidas</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
-            @click="$router.push(`/courses/${courseId}/enrollment`)"
+            @click="openAddStudentModal"
             class="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
           >
             <span class="text-3xl mr-3">➕</span>
             <div class="text-left">
-              <p class="font-semibold text-gray-900">Registrar Estudiante</p>
-              <p class="text-xs text-gray-600">Nuevo estudiante</p>
+              <p class="font-semibold text-gray-900">Añadir Estudiante</p>
+              <p class="text-xs text-gray-600">De los registrados</p>
             </div>
           </button>
 
@@ -162,21 +162,15 @@
             <div v-if="students.length === 0" class="text-center py-12 text-gray-500">
               <div class="text-6xl mb-4">👥</div>
               <p class="text-lg mb-2">No hay estudiantes en esta materia</p>
-              <p class="text-sm mb-4">Los estudiantes deben estar registrados primero en el sistema</p>
-              <div class="flex justify-center gap-3">
-                <button
-                  @click="$router.push('/enrollment')"
-                  class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  📝 Registrar Nuevo Estudiante
-                </button>
-                <button
-                  @click="openAddStudentModal"
-                  class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                >
-                  ➕ Añadir Existente
-                </button>
-              </div>
+              <p class="text-sm mb-4 text-gray-400">
+                Los estudiantes deben ser registrados por la secretaría antes de añadirlos aquí
+              </p>
+              <button
+                @click="openAddStudentModal"
+                class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                ➕ Añadir Estudiantes Registrados
+              </button>
             </div>
             <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div
@@ -257,22 +251,47 @@
           <button @click="showAddStudentModal = false" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         
+        <!-- Campo de búsqueda -->
+        <div class="mb-4">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+            <input
+              v-model="studentSearchQuery"
+              type="text"
+              placeholder="Buscar por nombre, cédula o email..."
+              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <button
+              v-if="studentSearchQuery"
+              @click="studentSearchQuery = ''"
+              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        
         <div v-if="availableStudents.length === 0" class="text-center py-8 text-gray-500">
           <div class="text-5xl mb-4">📭</div>
           <p class="text-lg mb-2">No hay estudiantes disponibles</p>
-          <p class="text-sm">Todos los estudiantes ya están inscritos o no hay estudiantes registrados</p>
-          <button
-            @click="$router.push('/enrollment'); showAddStudentModal = false"
-            class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            📝 Registrar Nuevo Estudiante
-          </button>
+          <p class="text-sm">Todos los estudiantes ya están inscritos en esta materia</p>
+          <p class="text-xs text-gray-400 mt-2">
+            💡 Contacta a la secretaría para registrar nuevos estudiantes
+          </p>
+        </div>
+        
+        <div v-else-if="filteredAvailableStudents.length === 0" class="text-center py-8 text-gray-500">
+          <div class="text-5xl mb-4">🔍</div>
+          <p class="text-lg mb-2">No se encontraron resultados</p>
+          <p class="text-sm">Prueba con otro término de búsqueda</p>
         </div>
         
         <div v-else class="flex-1 overflow-y-auto space-y-2">
-          <p class="text-sm text-gray-600 mb-3">{{ availableStudents.length }} estudiantes disponibles</p>
+          <p class="text-sm text-gray-600 mb-3">
+            {{ filteredAvailableStudents.length }} de {{ availableStudents.length }} estudiantes
+          </p>
           <div
-            v-for="student in availableStudents"
+            v-for="student in filteredAvailableStudents"
             :key="student.student_id"
             class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
           >
@@ -284,6 +303,7 @@
               <div>
                 <p class="font-semibold text-gray-900">{{ student.name }}</p>
                 <p class="text-xs text-gray-600">Cédula: {{ student.student_id }}</p>
+                <p v-if="student.email" class="text-xs text-gray-400">{{ student.email }}</p>
               </div>
             </div>
             <button
@@ -383,7 +403,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElNotification } from 'element-plus'
 import Navbar from '@/components/Navbar.vue'
@@ -399,8 +419,6 @@ const router = useRouter()
 
 const courseId = route.params.id as string
 
-console.log('🔍 CourseId:', courseId)
-
 const loading = ref(true)
 const course = ref<Course | null>(null)
 const activeTab = ref('students')
@@ -412,6 +430,23 @@ const recentActivity = ref<Array<{ id: string; type: string; message: string; ti
 // Modal para añadir estudiantes
 const showAddStudentModal = ref(false)
 const addingStudent = ref(false)
+const studentSearchQuery = ref('')
+
+// Filtrar estudiantes disponibles por búsqueda
+const filteredAvailableStudents = computed(() => {
+  if (!studentSearchQuery.value.trim()) {
+    return availableStudents.value
+  }
+  
+  const query = studentSearchQuery.value.toLowerCase().trim()
+  return availableStudents.value.filter(student => {
+    const name = (student.name || '').toLowerCase()
+    const studentId = (student.student_id || '').toLowerCase()
+    const email = (student.email || '').toLowerCase()
+    
+    return name.includes(query) || studentId.includes(query) || email.includes(query)
+  })
+})
 
 const showCreateSessionModal = ref(false)
 const sessionForm = reactive({
@@ -443,7 +478,6 @@ const loadCourseData = async () => {
     // Load students enrolled in this course using enrollments service
     students.value = await enrollmentsService.getCourseStudents(courseId)
     stats.value.totalStudents = students.value.length
-    console.log('👥 Estudiantes inscritos:', students.value)
 
     // Load sessions of this course only
     // Note: course_id is stored in metadata field
@@ -452,17 +486,12 @@ const loadCourseData = async () => {
       .select('*')
       .order('created_at', { ascending: false })
     
-    if (sessionsError) {
-      console.error('Error loading sessions:', sessionsError)
-    }
-    
     // Filter sessions by course_id in metadata
     sessions.value = (allSessionsData || []).filter(session => {
       const metadata = session.metadata as { course_id?: string } | null
       return metadata?.course_id === courseId
     })
     
-    console.log('📅 Sessions loaded:', sessions.value)
     stats.value.totalSessions = sessions.value.length
 
     // Cargar estadísticas reales del curso (usando UUID, no int)
@@ -470,8 +499,7 @@ const loadCourseData = async () => {
       const courseStats = await statisticsService.getCourseStats(courseId as any)
       stats.value.avgAttendance = courseStats.avgAttendance || 0
       stats.value.avgEngagement = courseStats.avgEngagement || 0
-    } catch (statsError) {
-      console.warn('No se pudieron cargar estadísticas:', statsError)
+    } catch {
       stats.value.avgAttendance = 0
       stats.value.avgEngagement = 0
     }
@@ -491,8 +519,8 @@ const loadCourseData = async () => {
         timestamp: new Date().toISOString()
       }
     ]
-  } catch (error) {
-    console.error('Error loading course data:', error)
+  } catch {
+    // Error loading course data
   } finally {
     loading.value = false
   }
@@ -502,8 +530,8 @@ const loadCourseData = async () => {
 const loadAvailableStudents = async () => {
   try {
     availableStudents.value = await enrollmentsService.getAvailableStudents(courseId)
-  } catch (error) {
-    console.error('Error loading available students:', error)
+  } catch {
+    // Error loading available students
   }
 }
 
@@ -554,16 +582,18 @@ const unenrollStudent = async (studentId: string, studentName: string) => {
 
 // Abrir modal de añadir estudiantes
 const openAddStudentModal = async () => {
+  studentSearchQuery.value = '' // Resetear búsqueda
   await loadAvailableStudents()
   showAddStudentModal.value = true
 }
 
 const createSession = async () => {
-  console.log('🔥 createSession called!')
-  console.log('Course:', course.value)
-  
   if (!course.value) {
-    alert('⚠️ No se pudo cargar la información del curso')
+    ElNotification({
+      title: 'Error',
+      message: 'No se pudo cargar la información del curso',
+      type: 'error'
+    })
     return
   }
   
@@ -575,8 +605,6 @@ const createSession = async () => {
     })
     return
   }
-  
-  console.log('Session form:', sessionForm)
 
   try {
     loading.value = true
@@ -585,13 +613,6 @@ const createSession = async () => {
     const sessionDateTime = new Date(`${sessionForm.date}T${sessionForm.startTime}`)
     const timestamp = sessionDateTime.getTime()
     const classId = `${course.value.course_code}-${timestamp}`
-    
-    console.log('📤 Creating session with data:', {
-      class_id: classId,
-      class_name: sessionForm.name.trim(),
-      course_id: courseId.toString(),
-      start_time: sessionDateTime.toISOString()
-    })
     
     // Crear la sesión usando el servicio de clases
     const response = await classesService.createClass({
@@ -602,8 +623,6 @@ const createSession = async () => {
       instructor: undefined,
       room: undefined
     })
-
-    console.log('📥 Response:', response)
 
     if (response.success) {
       ElNotification({
@@ -624,8 +643,6 @@ const createSession = async () => {
       })
     }
   } catch (error: any) {
-    console.error('❌ Error creando sesión:', error)
-    console.error('Error details:', error.response?.data)
     ElNotification({
       title: 'Error',
       message: error.response?.data?.detail || error.message || 'No se pudo crear la sesión',

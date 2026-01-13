@@ -154,7 +154,10 @@ import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const route = useRoute()
-const { signIn, signUp } = useAuth()
+const { signIn, signUp, isAdmin } = useAuth()
+
+// Email del admin para mostrar mensaje especial
+const ADMIN_EMAIL = 'secretaria@uleam.com'
 
 const isLoginMode = ref(true)
 const isLoading = ref(false)
@@ -193,11 +196,22 @@ const handleSubmit = async () => {
         return
       }
 
-      successMessage.value = '¡Bienvenido! Redirigiendo...'
+      // Determinar redirección según rol
+      const isAdminUser = formData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+      
+      if (isAdminUser) {
+        successMessage.value = '¡Bienvenida Secretaría! Redirigiendo...'
+      } else {
+        successMessage.value = '¡Bienvenido Profesor! Redirigiendo...'
+      }
       
       setTimeout(() => {
-        const redirect = route.query.redirect as string
-        router.push(redirect || '/dashboard')
+        if (isAdminUser) {
+          router.push('/admin/students')
+        } else {
+          const redirect = route.query.redirect as string
+          router.push(redirect || '/dashboard')
+        }
       }, 1000)
     } else {
       // Register

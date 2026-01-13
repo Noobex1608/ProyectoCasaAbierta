@@ -242,8 +242,7 @@ const startCamera = async () => {
       mediaStream.value = stream
       isCameraActive.value = true
     }
-  } catch (error) {
-    console.error('Error activando cámara:', error)
+  } catch {
     errorMessage.value = 'No se pudo acceder a la cámara. Verifica los permisos.'
   }
 }

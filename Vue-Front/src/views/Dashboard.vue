@@ -44,10 +44,10 @@
       <!-- Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">
-          📊 Dashboard General
+          📚 Mis Materias
         </h1>
         <p class="mt-2 text-sm text-gray-600">
-          Resumen de actividad y estadísticas del sistema
+          Selecciona una materia para ver su dashboard y gestionar clases
         </p>
       </div>
 
@@ -56,170 +56,59 @@
         <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
       </div>
 
-      <!-- Stats Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Total Students -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-600">Total Estudiantes</p>
-              <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.totalStudents }}</p>
-            </div>
-            <div class="text-4xl">👥</div>
-          </div>
-          <p class="text-xs text-gray-500 mt-2">Estudiantes registrados</p>
-        </div>
-
-        <!-- Active Classes -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-600">Clases Activas</p>
-              <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.activeClasses }}</p>
-            </div>
-            <div class="text-4xl">📅</div>
-          </div>
-          <p class="text-xs text-gray-500 mt-2">Sesiones en curso</p>
-        </div>
-
-        <!-- Average Attendance -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-600">Asistencia Promedio</p>
-              <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.avgAttendance }}%</p>
-            </div>
-            <div class="text-4xl">✅</div>
-          </div>
-          <p class="text-xs text-gray-500 mt-2">Últimas 7 clases</p>
-        </div>
-
-        <!-- Engagement Score -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-600">Engagement</p>
-              <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.avgEngagement }}%</p>
-            </div>
-            <div class="text-4xl">😊</div>
-          </div>
-          <p class="text-xs text-gray-500 mt-2">Nivel de participación</p>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-gray-900">📚 Mis Materias/Cursos</h2>
+      <!-- Courses Grid -->
+      <div v-else>
+        <!-- Empty State -->
+        <div v-if="courses.length === 0" class="bg-white rounded-lg shadow-md p-12 text-center">
+          <div class="text-8xl mb-6">📚</div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">No tienes materias registradas</h2>
+          <p class="text-gray-600 mb-6">Crea tu primera materia para comenzar a gestionar tus clases y estudiantes</p>
           <button
             @click="showCreateCourseModal = true"
-            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            ➕ Nueva Materia
-          </button>
-        </div>
-
-        <div v-if="courses.length === 0" class="text-center py-12 text-gray-500">
-          <div class="text-6xl mb-4">📚</div>
-          <p class="text-lg mb-4">No tienes materias registradas</p>
-          <button
-            @click="showCreateCourseModal = true"
-            class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            class="px-8 py-4 bg-indigo-600 text-white text-lg rounded-lg hover:bg-indigo-700 transition-colors shadow-lg hover:shadow-xl"
           >
             ➕ Crear Primera Materia
           </button>
         </div>
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <router-link
-            v-for="course in courses"
-            :key="course.id"
-            :to="`/courses/${course.id}`"
-            class="block p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200 hover:border-indigo-400 transition-all hover:shadow-lg"
-          >
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900">{{ course.course_name }}</h3>
-                <p class="text-sm text-indigo-600 font-medium">{{ course.course_code }}</p>
-              </div>
-              <span class="text-3xl">📖</span>
-            </div>
-            <p v-if="course.description" class="text-sm text-gray-600 mb-3 line-clamp-2">
-              {{ course.description }}
-            </p>
-            <div class="flex items-center justify-between text-xs text-gray-500">
-              <span>Click para ver detalles →</span>
-            </div>
-          </router-link>
-        </div>
-      </div>
+        <!-- Courses List -->
+        <div v-else>
+          <div class="flex justify-between items-center mb-6">
+            <p class="text-gray-600">{{ courses.length }} materia{{ courses.length !== 1 ? 's' : '' }} registrada{{ courses.length !== 1 ? 's' : '' }}</p>
+            <button
+              @click="showCreateCourseModal = true"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              ➕ Nueva Materia
+            </button>
+          </div>
 
-      <!-- Recent Activity -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Recent Classes -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">📅 Clases Recientes</h2>
-          <div v-if="recentClasses.length === 0" class="text-center py-8 text-gray-500">
-            <p>No hay clases recientes</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <router-link
-              to="/classes"
-              class="text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2 inline-block"
+              v-for="course in courses"
+              :key="course.id"
+              :to="`/courses/${course.id}`"
+              class="group block p-6 bg-white rounded-xl shadow-md border-2 border-transparent hover:border-indigo-400 transition-all hover:shadow-xl hover:-translate-y-1"
             >
-              Crear primera clase →
+              <div class="flex items-start justify-between mb-4">
+                <div class="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                  📖
+                </div>
+                <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-full">
+                  {{ course.course_code }}
+                </span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                {{ course.course_name }}
+              </h3>
+              <p v-if="course.description" class="text-sm text-gray-600 mb-4 line-clamp-2">
+                {{ course.description }}
+              </p>
+              <div class="flex items-center text-indigo-600 text-sm font-medium">
+                <span>Ver dashboard de la materia</span>
+                <span class="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </router-link>
-          </div>
-          <div v-else class="space-y-3">
-            <div
-              v-for="classItem in recentClasses"
-              :key="classItem.id"
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div>
-                <p class="font-semibold text-gray-900">{{ classItem.class_name }}</p>
-                <p class="text-xs text-gray-600">
-                  {{ formatDate(classItem.start_time) }}
-                </p>
-              </div>
-              <span
-                :class="[
-                  'px-2 py-1 text-xs font-medium rounded',
-                  classItem.end_time
-                    ? 'bg-gray-200 text-gray-700'
-                    : 'bg-green-100 text-green-700'
-                ]"
-              >
-                {{ classItem.end_time ? 'Finalizada' : 'Activa' }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Students -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">👥 Estudiantes Recientes</h2>
-          <div v-if="recentStudents.length === 0" class="text-center py-8 text-gray-500">
-            <p>No hay estudiantes registrados</p>
-            <router-link
-              to="/enrollment"
-              class="text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2 inline-block"
-            >
-              Registrar estudiante →
-            </router-link>
-          </div>
-          <div v-else class="space-y-3">
-            <div
-              v-for="student in recentStudents"
-              :key="student.id"
-              class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
-                {{ getInitials(student.name) }}
-              </div>
-              <div class="flex-1">
-                <p class="font-semibold text-gray-900">{{ student.name }}</p>
-                <p class="text-xs text-gray-600">{{ student.student_id }}</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -309,11 +198,8 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { enrollmentService } from '@/services/enrollment.service'
-import { classesService } from '@/services/classes.service'
 import { coursesService } from '@/services/courses.service'
-import statisticsService from '@/services/statistics.service'
-import type { Student, ClassSession, Course } from '@/types'
+import type { Course } from '@/types'
 
 const router = useRouter()
 const loading = ref(true)
@@ -322,16 +208,7 @@ const creatingCourse = ref(false)
 const createError = ref('')
 const userProfile = ref<any>(null)
 
-const stats = ref({
-  totalStudents: 0,
-  activeClasses: 0,
-  avgAttendance: 0,
-  avgEngagement: 0
-})
-
 const courses = ref<Course[]>([])
-const recentClasses = ref<ClassSession[]>([])
-const recentStudents = ref<Student[]>([])
 
 const newCourse = reactive({
   course_name: '',
@@ -378,27 +255,10 @@ const loadDashboardData = async () => {
   loading.value = true
   
   try {
-    // Load courses
+    // Load courses only
     courses.value = await coursesService.getMyCourses()
-    console.log('📚 Cursos cargados:', courses.value)
-
-    // Cargar estudiantes
-    const students = await enrollmentService.getStudents()
-    stats.value.totalStudents = students.length
-    recentStudents.value = students.slice(-5).reverse()
-
-    // Cargar clases
-    const classes = await classesService.getClasses()
-    const activeClasses = classes.filter(c => !c.end_time)
-    stats.value.activeClasses = activeClasses.length
-    recentClasses.value = classes.slice(-5).reverse()
-
-    // Cargar estadísticas reales desde el backend
-    const dashboardStats = await statisticsService.getDashboardStats()
-    stats.value.avgAttendance = dashboardStats.avgAttendance
-    stats.value.avgEngagement = dashboardStats.avgEngagement
-  } catch (error) {
-    console.error('Error cargando datos del dashboard:', error)
+  } catch {
+    // Error loading data
   } finally {
     loading.value = false
   }
@@ -430,32 +290,14 @@ const createCourse = async () => {
   }
 }
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date)
-}
-
-const getInitials = (name: string) => {
-  const names = name.split(' ').filter(n => n.length > 0)
-  if (names.length === 0) return 'U'
-  return names.length > 1
-    ? (names[0]?.[0] || '') + (names[1]?.[0] || '')
-    : (names[0]?.[0] || 'U')
-}
-
 const handleLogout = async () => {
   if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
     try {
       const { supabase } = await import('@/services/supabase')
       await supabase.auth.signOut()
       router.push('/login')
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error)
+    } catch {
+      // Error signing out
     }
   }
 }

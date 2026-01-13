@@ -118,8 +118,8 @@ const loadActiveClasses = async () => {
     } else if (activeClasses.value.length > 0 && activeClasses.value[0]) {
       selectedClassId.value = activeClasses.value[0].id
     }
-  } catch (error) {
-    console.error('Error cargando clases:', error)
+  } catch {
+    // Error loading classes
   }
 }
 
@@ -128,8 +128,8 @@ const loadEmotionLogs = async () => {
 
   try {
     emotionLogs.value = await emotionsService.getClassEmotions(selectedClassId.value as any)
-  } catch (error) {
-    console.error('Error cargando logs:', error)
+  } catch {
+    // Error loading logs
   }
 }
 
