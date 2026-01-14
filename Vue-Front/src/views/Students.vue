@@ -3,25 +3,23 @@
  */
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Navbar />
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
-      <div class="flex justify-between items-center mb-8">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">👥 Gestión de Estudiantes</h1>
-          <p class="mt-2 text-sm text-gray-600">
-            Administra los estudiantes registrados en el sistema
-          </p>
-        </div>
-        <router-link
-          to="/enrollment"
-          class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium flex items-center"
-        >
-          <span class="mr-2">➕</span>
-          Registrar Nuevo Estudiante
-        </router-link>
-      </div>
+      <PageHeader
+        title="Gestion de Estudiantes"
+        icon="users"
+        description="Administra los estudiantes registrados en el sistema"
+      >
+        <template #action>
+          <router-link
+            to="/enrollment"
+            class="px-6 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors duration-200 font-medium flex items-center gap-2"
+          >
+            <FontAwesomeIcon :icon="['fas', 'plus']" />
+            Registrar Nuevo Estudiante
+          </router-link>
+        </template>
+      </PageHeader>
 
       <!-- Search and Filters -->
       <div class="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -30,43 +28,42 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por nombre, cédula o email..."
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Buscar por nombre, cedula o email..."
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
             />
           </div>
           <button
             @click="loadStudents"
-            class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+            class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 inline-flex items-center gap-2"
           >
-            🔄 Actualizar
+            <FontAwesomeIcon :icon="['fas', 'arrows-rotate']" />
+            Actualizar
           </button>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center h-64">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-      </div>
+      <LoadingSpinner v-if="loading" />
 
       <!-- Empty State -->
-      <div v-else-if="filteredStudents.length === 0 && !searchQuery" class="bg-white rounded-lg shadow-md p-12 text-center">
-        <div class="text-6xl mb-4">📚</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-2">No hay estudiantes registrados</h2>
-        <p class="text-gray-600 mb-6">Comienza registrando tu primer estudiante</p>
-        <router-link
-          to="/enrollment"
-          class="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
-        >
-          ➕ Registrar Estudiante
-        </router-link>
-      </div>
+      <EmptyState
+        v-else-if="filteredStudents.length === 0 && !searchQuery"
+        icon="book"
+        title="No hay estudiantes registrados"
+        description="Comienza registrando tu primer estudiante"
+        action-text="Registrar Estudiante"
+        action-icon="plus"
+        @action="$router.push('/enrollment')"
+      />
 
       <!-- No Results -->
-      <div v-else-if="filteredStudents.length === 0 && searchQuery" class="bg-white rounded-lg shadow-md p-12 text-center">
-        <div class="text-6xl mb-4">🔍</div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">No se encontraron resultados</h2>
-        <p class="text-gray-600">Intenta con otra búsqueda</p>
-      </div>
+      <EmptyState
+        v-else-if="filteredStudents.length === 0 && searchQuery"
+        icon="magnifying-glass"
+        icon-size="lg"
+        title="No se encontraron resultados"
+        description="Intenta con otra busqueda"
+      />
 
       <!-- Students Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -76,7 +73,7 @@
           class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
         >
           <!-- Student Photo -->
-          <div class="h-48 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+          <div class="h-48 bg-gradient-to-br from-[#b81a16] to-[#9a1512] flex items-center justify-center">
             <img
               v-if="student.photo_url"
               :src="student.photo_url"
@@ -102,7 +99,7 @@
             <div class="flex gap-2">
               <button
                 @click="viewStudentDetails(student)"
-                class="flex-1 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors duration-200 text-sm font-medium"
+                class="flex-1 px-3 py-2 bg-red-50 text-[#b81a16] rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium"
               >
                 Ver Detalles
               </button>
@@ -110,7 +107,7 @@
                 @click="confirmDelete(student)"
                 class="px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium"
               >
-                🗑️
+                <FontAwesomeIcon :icon="['fas', 'trash']" />
               </button>
             </div>
           </div>
@@ -130,9 +127,7 @@
               @click="selectedStudent = null"
               class="text-gray-400 hover:text-gray-600"
             >
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <FontAwesomeIcon :icon="['fas', 'xmark']" class="h-6 w-6" />
             </button>
           </div>
 
@@ -176,8 +171,9 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-600">Estado del Embedding</label>
-                <p class="text-lg font-semibold" :class="selectedStudent.has_embedding ? 'text-green-600' : 'text-red-600'">
-                  {{ selectedStudent.has_embedding ? '✅ Registrado' : '❌ No disponible' }}
+                <p class="text-lg font-semibold flex items-center gap-2" :class="selectedStudent.has_embedding ? 'text-green-600' : 'text-red-600'">
+                  <FontAwesomeIcon :icon="['fas', selectedStudent.has_embedding ? 'circle-check' : 'circle-xmark']" />
+                  {{ selectedStudent.has_embedding ? 'Registrado' : 'No disponible' }}
                 </p>
               </div>
             </div>
@@ -186,43 +182,35 @@
       </div>
 
       <!-- Delete Confirmation Modal -->
-      <div
-        v-if="studentToDelete"
-        class="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center p-4 z-50"
-        @click.self="studentToDelete = null"
+      <ConfirmModal
+        :show="!!studentToDelete"
+        title="Confirmar Eliminación"
+        icon="triangle-exclamation"
+        icon-color="warning"
+        confirm-text="Eliminar"
+        confirm-icon="trash"
+        :loading="deleting"
+        loading-text="Eliminando..."
+        @confirm="deleteStudent"
+        @cancel="studentToDelete = null"
       >
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">Confirmar Eliminación</h2>
-          <p class="text-gray-600 mb-6">
-            ¿Estás seguro de que deseas eliminar a <strong>{{ studentToDelete.name }}</strong>?
-            Esta acción no se puede deshacer.
-          </p>
-          <div class="flex gap-3">
-            <button
-              @click="studentToDelete = null"
-              class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              @click="deleteStudent"
-              :disabled="deleting"
-              class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium disabled:opacity-50"
-            >
-              {{ deleting ? 'Eliminando...' : 'Eliminar' }}
-            </button>
-          </div>
-        </div>
-      </div>
+        <p>
+          ¿Estás seguro de que deseas eliminar a <strong>{{ studentToDelete?.name }}</strong>?
+          Esta acción no se puede deshacer.
+        </p>
+      </ConfirmModal>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import Navbar from '@/components/Navbar.vue'
 import { enrollmentService } from '@/services/enrollment.service'
 import type { Student } from '@/types'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const loading = ref(true)
 const students = ref<Student[]>([])

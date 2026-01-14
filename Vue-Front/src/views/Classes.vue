@@ -3,49 +3,46 @@
  */
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Navbar />
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
-      <div class="flex justify-between items-center mb-8">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">📅 Gestión de Clases</h1>
-          <p class="mt-2 text-sm text-gray-600">
-            Crea y administra sesiones de clase
-          </p>
-        </div>
-        <button
-          @click="showCreateModal = true"
-          class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium flex items-center"
-        >
-          <span class="mr-2">➕</span>
-          Nueva Clase
-        </button>
-      </div>
+      <PageHeader
+        title="Gestion de Clases"
+        icon="calendar-days"
+        description="Crea y administra sesiones de clase"
+      >
+        <template #action>
+          <button
+            @click="showCreateModal = true"
+            class="px-6 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors duration-200 font-medium flex items-center gap-2"
+          >
+            <FontAwesomeIcon :icon="['fas', 'plus']" />
+            Nueva Clase
+          </button>
+        </template>
+      </PageHeader>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center h-64">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-      </div>
+      <LoadingSpinner v-if="loading" />
 
       <!-- Empty State -->
-      <div v-else-if="classes.length === 0" class="bg-white rounded-lg shadow-md p-12 text-center">
-        <div class="text-6xl mb-4">📚</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-2">No hay clases creadas</h2>
-        <p class="text-gray-600 mb-6">Crea tu primera sesión de clase</p>
-        <button
-          @click="showCreateModal = true"
-          class="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
-        >
-          ➕ Nueva Clase
-        </button>
-      </div>
+      <EmptyState
+        v-else-if="classes.length === 0"
+        icon="book"
+        title="No hay clases creadas"
+        description="Crea tu primera sesion de clase"
+        action-text="Nueva Clase"
+        action-icon="plus"
+        @action="showCreateModal = true"
+      />
 
       <!-- Classes List -->
       <div v-else class="space-y-6">
         <!-- Active Classes -->
         <div v-if="activeClasses.length > 0">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">🟢 Clases Activas</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'circle']" class="text-green-500 text-sm" />
+            Clases Activas
+          </h2>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div
               v-for="classItem in activeClasses"
@@ -61,31 +58,43 @@
                 </div>
 
                 <div class="space-y-2 text-sm text-gray-600 mb-4">
-                  <p>📅 Inicio: {{ formatDateTime(classItem.start_time) }}</p>
-                  <p>⏱️ Duración: {{ getDuration(classItem.start_time) }}</p>
-                  <p>🆔 ID: {{ classItem.id }}</p>
+                  <p class="flex items-center gap-2">
+                    <FontAwesomeIcon :icon="['fas', 'calendar-days']" class="text-gray-400 w-4" />
+                    Inicio: {{ formatDateTime(classItem.start_time) }}
+                  </p>
+                  <p class="flex items-center gap-2">
+                    <FontAwesomeIcon :icon="['fas', 'stopwatch']" class="text-gray-400 w-4" />
+                    Duracion: {{ getDuration(classItem.start_time) }}
+                  </p>
+                  <p class="flex items-center gap-2">
+                    <FontAwesomeIcon :icon="['fas', 'id-card']" class="text-gray-400 w-4" />
+                    ID: {{ classItem.id }}
+                  </p>
                 </div>
 
                 <div class="flex gap-2">
                   <router-link
                     :to="`/attendance?class_id=${classItem.id}`"
-                    class="flex-1 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors duration-200 text-sm font-medium text-center"
+                    class="flex-1 px-3 py-2 bg-indigo-50 text-[#b81a16] rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium text-center inline-flex items-center justify-center gap-1"
                   >
-                    ✅ Asistencia
+                    <FontAwesomeIcon :icon="['fas', 'circle-check']" />
+                    Asistencia
                   </router-link>
                   <router-link
                     :to="`/emotions?class_id=${classItem.id}`"
-                    class="flex-1 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors duration-200 text-sm font-medium text-center"
+                    class="flex-1 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors duration-200 text-sm font-medium text-center inline-flex items-center justify-center gap-1"
                   >
-                    😊 Emociones
+                    <FontAwesomeIcon :icon="['fas', 'face-smile']" />
+                    Emociones
                   </router-link>
                 </div>
 
                 <button
                   @click="confirmEndClass(classItem)"
-                  class="w-full mt-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium"
+                  class="w-full mt-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium inline-flex items-center justify-center gap-2"
                 >
-                  ⏹️ Finalizar Clase
+                  <FontAwesomeIcon :icon="['fas', 'stop']" />
+                  Finalizar Clase
                 </button>
               </div>
             </div>
@@ -94,7 +103,10 @@
 
         <!-- Past Classes -->
         <div v-if="pastClasses.length > 0">
-          <h2 class="text-xl font-bold text-gray-900 mb-4 mt-8">📚 Clases Finalizadas</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4 mt-8 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'book']" class="text-gray-500" />
+            Clases Finalizadas
+          </h2>
           <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200">
@@ -135,9 +147,10 @@
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         @click="confirmDeleteClass(classItem)"
-                        class="text-red-600 hover:text-red-900"
+                        class="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
                       >
-                        🗑️ Eliminar
+                        <FontAwesomeIcon :icon="['fas', 'trash']" />
+                        Eliminar
                       </button>
                     </td>
                   </tr>
@@ -155,7 +168,10 @@
         @click.self="showCreateModal = false"
       >
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <h2 class="text-2xl font-bold text-gray-900 mb-4">📝 Nueva Clase</h2>
+          <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'file-pen']" class="text-[#b81a16]" />
+            Nueva Clase
+          </h2>
 
           <form @submit.prevent="createClass">
             <div class="mb-4">
@@ -167,14 +183,17 @@
                 v-model="newClassName"
                 type="text"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                 placeholder="Ej: Matemáticas - Sección A"
               />
             </div>
 
-            <div v-if="createError" class="mb-4 p-3 bg-red-50 border-l-4 border-red-500 rounded">
-              <p class="text-sm text-red-700">{{ createError }}</p>
-            </div>
+            <AlertMessage 
+              v-if="createError" 
+              type="error" 
+              :message="createError" 
+              class="mb-4"
+            />
 
             <div class="flex gap-3">
               <button
@@ -187,7 +206,7 @@
               <button
                 type="submit"
                 :disabled="creating"
-                class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium disabled:opacity-50"
+                class="flex-1 px-4 py-2 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors duration-200 font-medium disabled:opacity-50"
               >
                 {{ creating ? 'Creando...' : 'Crear Clase' }}
               </button>
@@ -197,72 +216,52 @@
       </div>
 
       <!-- End Class Confirmation Modal -->
-      <div
-        v-if="classToEnd"
-        class="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center p-4 z-50"
-        @click.self="classToEnd = null"
+      <ConfirmModal
+        :show="!!classToEnd"
+        title="Finalizar Clase"
+        confirm-text="Finalizar"
+        :loading="ending"
+        loading-text="Finalizando..."
+        variant="warning"
+        @confirm="endClass"
+        @cancel="classToEnd = null"
       >
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">Finalizar Clase</h2>
-          <p class="text-gray-600 mb-6">
-            ¿Estás seguro de que deseas finalizar la clase <strong>{{ classToEnd.class_name }}</strong>?
-          </p>
-          <div class="flex gap-3">
-            <button
-              @click="classToEnd = null"
-              class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              @click="endClass"
-              :disabled="ending"
-              class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium disabled:opacity-50"
-            >
-              {{ ending ? 'Finalizando...' : 'Finalizar' }}
-            </button>
-          </div>
-        </div>
-      </div>
+        <p>
+          ¿Estás seguro de que deseas finalizar la clase <strong>{{ classToEnd?.class_name }}</strong>?
+        </p>
+      </ConfirmModal>
 
       <!-- Delete Class Confirmation Modal -->
-      <div
-        v-if="classToDelete"
-        class="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center p-4 z-50"
-        @click.self="classToDelete = null"
+      <ConfirmModal
+        :show="!!classToDelete"
+        title="Eliminar Clase"
+        icon="triangle-exclamation"
+        icon-color="warning"
+        confirm-text="Eliminar"
+        confirm-icon="trash"
+        :loading="deleting"
+        loading-text="Eliminando..."
+        @confirm="deleteClass"
+        @cancel="classToDelete = null"
       >
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">Eliminar Clase</h2>
-          <p class="text-gray-600 mb-6">
-            ¿Estás seguro de que deseas eliminar la clase <strong>{{ classToDelete.class_name }}</strong>?
-            Esta acción no se puede deshacer.
-          </p>
-          <div class="flex gap-3">
-            <button
-              @click="classToDelete = null"
-              class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              @click="deleteClass"
-              :disabled="deleting"
-              class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium disabled:opacity-50"
-            >
-              {{ deleting ? 'Eliminando...' : 'Eliminar' }}
-            </button>
-          </div>
-        </div>
-      </div>
+        <p>
+          ¿Estás seguro de que deseas eliminar la clase <strong>{{ classToDelete?.class_name }}</strong>?
+          Esta acción no se puede deshacer.
+        </p>
+      </ConfirmModal>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import Navbar from '@/components/Navbar.vue'
 import { classesService } from '@/services/classes.service'
 import type { ClassSession } from '@/types'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
+import AlertMessage from '@/components/AlertMessage.vue'
 
 const loading = ref(true)
 const classes = ref<ClassSession[]>([])

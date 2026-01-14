@@ -3,19 +3,25 @@
  */
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Navbar />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-8">😊 Análisis Emocional</h1>
+      <PageHeader
+        title="Analisis Emocional"
+        icon="face-smile"
+        icon-color="purple"
+      />
 
       <!-- Combined Emotion Analytics -->
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-gray-900">📊 Análisis de Clase</h2>
+          <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'chart-bar']" class="text-[#b81a16]" />
+            Analisis de Clase
+          </h2>
           <select
             v-model="selectedClassId"
             @change="loadEmotionLogs"
-            class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
           >
             <option value="">Seleccionar clase...</option>
             <option v-for="classItem in activeClasses" :key="classItem.id" :value="classItem.id">
@@ -26,16 +32,21 @@
 
         <!-- Empty State -->
         <div v-if="emotionLogs.length === 0" class="text-center py-16 text-gray-500">
-          <div class="text-6xl mb-4">🎭</div>
-          <p class="text-xl font-semibold text-gray-900 mb-2">No hay registros aún</p>
-          <p class="text-sm">Las emociones se capturan automáticamente al tomar asistencia</p>
+          <div class="text-6xl mb-4 text-gray-300">
+            <FontAwesomeIcon :icon="['fas', 'masks-theater']" />
+          </div>
+          <p class="text-xl font-semibold text-gray-900 mb-2">No hay registros aun</p>
+          <p class="text-sm">Las emociones se capturan automaticamente al tomar asistencia</p>
         </div>
 
         <!-- Content with data -->
         <div v-else>
           <!-- Statistics Section -->
           <div class="mb-8">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">📈 Resumen Estadístico</h3>
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <FontAwesomeIcon :icon="['fas', 'chart-line']" class="text-green-600" />
+              Resumen Estadistico
+            </h3>
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               <div 
                 v-for="(count, emotion) in emotionStats" 
@@ -56,7 +67,10 @@
 
           <!-- History Section -->
           <div class="border-t border-gray-200 pt-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">📋 Historial Detallado</h3>
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <FontAwesomeIcon :icon="['fas', 'clipboard-list']" class="text-[#b81a16]" />
+              Historial Detallado
+            </h3>
             <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
               <div
                 v-for="log in emotionLogs"
@@ -86,10 +100,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import Navbar from '@/components/Navbar.vue'
 import { classesService } from '@/services/classes.service'
 import { emotionsService } from '@/services/emotions.service'
 import type { ClassSession, EmotionLog } from '@/types'
+import PageHeader from '@/components/PageHeader.vue'
 
 const route = useRoute()
 

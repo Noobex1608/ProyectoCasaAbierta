@@ -4,80 +4,34 @@
  */
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-    <!-- Admin Navbar -->
-    <nav class="bg-gradient-to-r from-slate-800 to-slate-900 shadow-lg">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-3">
-            <span class="text-3xl">🏫</span>
-            <div>
-              <span class="text-xl font-bold text-white">Smart Classroom AI</span>
-              <span class="ml-2 px-2 py-1 bg-amber-500 text-xs font-bold rounded text-white">ADMIN</span>
-            </div>
-          </div>
-
-          <div class="flex items-center space-x-4">
-            <div class="text-right hidden sm:block">
-              <p class="text-sm font-medium text-white">Secretaría</p>
-              <p class="text-xs text-slate-400">Gestión de Estudiantes</p>
-            </div>
-            <button
-              @click="handleLogout"
-              class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-            >
-              Salir
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-slate-800">👥 Gestión de Estudiantes</h1>
-        <p class="mt-2 text-slate-600">
-          Registra y administra los estudiantes del sistema
-        </p>
-      </div>
+      <PageHeader
+        title="Gestion de Estudiantes"
+        icon="users"
+        description="Registra y administra los estudiantes del sistema"
+      />
 
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600">Total Estudiantes</p>
-              <p class="text-3xl font-bold text-slate-900 mt-1">{{ students.length }}</p>
-            </div>
-            <div class="h-14 w-14 bg-blue-100 rounded-full flex items-center justify-center">
-              <span class="text-3xl">👥</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600">Con Foto Registrada</p>
-              <p class="text-3xl font-bold text-slate-900 mt-1">{{ studentsWithPhoto }}</p>
-            </div>
-            <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center">
-              <span class="text-3xl">📸</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600">Registrados Hoy</p>
-              <p class="text-3xl font-bold text-slate-900 mt-1">{{ registeredToday }}</p>
-            </div>
-            <div class="h-14 w-14 bg-purple-100 rounded-full flex items-center justify-center">
-              <span class="text-3xl">📅</span>
-            </div>
-          </div>
-        </div>
+        <StatsCard
+          label="Total Estudiantes"
+          :value="students.length"
+          icon="users"
+          color="red"
+        />
+        <StatsCard
+          label="Con Foto Registrada"
+          :value="studentsWithPhoto"
+          icon="camera"
+          color="green"
+        />
+        <StatsCard
+          label="Registrados Hoy"
+          :value="registeredToday"
+          icon="calendar-days"
+          color="purple"
+        />
       </div>
 
       <!-- Actions Bar -->
@@ -87,51 +41,51 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por nombre o cédula..."
-              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Buscar por nombre o cedula..."
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
             />
           </div>
           <div class="flex gap-3">
             <button
               @click="loadStudents"
-              class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+              class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors inline-flex items-center gap-2"
             >
-              🔄 Actualizar
+              <FontAwesomeIcon :icon="['fas', 'arrows-rotate']" />
+              Actualizar
             </button>
             <button
               @click="showRegisterModal = true"
-              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              class="px-6 py-2 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors font-medium inline-flex items-center gap-2"
             >
-              ➕ Registrar Estudiante
+              <FontAwesomeIcon :icon="['fas', 'plus']" />
+              Registrar Estudiante
             </button>
           </div>
         </div>
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="flex justify-center items-center h-64">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
-      </div>
+      <LoadingSpinner v-if="loading" />
 
       <!-- Empty State -->
-      <div v-else-if="filteredStudents.length === 0 && !searchQuery" class="bg-white rounded-xl shadow-md p-12 text-center">
-        <div class="text-7xl mb-4">📚</div>
-        <h2 class="text-2xl font-bold text-slate-900 mb-2">No hay estudiantes registrados</h2>
-        <p class="text-slate-600 mb-6">Comienza registrando el primer estudiante del sistema</p>
-        <button
-          @click="showRegisterModal = true"
-          class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
-        >
-          ➕ Registrar Primer Estudiante
-        </button>
-      </div>
+      <EmptyState
+        v-else-if="filteredStudents.length === 0 && !searchQuery"
+        icon="book"
+        title="No hay estudiantes registrados"
+        description="Comienza registrando el primer estudiante del sistema"
+        action-text="Registrar Primer Estudiante"
+        action-icon="plus"
+        @action="showRegisterModal = true"
+      />
 
       <!-- No Results -->
-      <div v-else-if="filteredStudents.length === 0 && searchQuery" class="bg-white rounded-xl shadow-md p-12 text-center">
-        <div class="text-7xl mb-4">🔍</div>
-        <h2 class="text-xl font-bold text-slate-900 mb-2">No se encontraron resultados</h2>
-        <p class="text-slate-600">Intenta con otra búsqueda</p>
-      </div>
+      <EmptyState
+        v-else-if="filteredStudents.length === 0 && searchQuery"
+        icon="magnifying-glass"
+        icon-size="lg"
+        title="No se encontraron resultados"
+        description="Intenta con otra busqueda"
+      />
 
       <!-- Students Table -->
       <div v-else class="bg-white rounded-xl shadow-md overflow-hidden">
@@ -179,10 +133,11 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span 
-                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                  class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full items-center gap-1"
                   :class="student.has_embedding ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'"
                 >
-                  {{ student.has_embedding ? '✅ Completo' : '⚠️ Sin foto' }}
+                  <FontAwesomeIcon :icon="['fas', student.has_embedding ? 'circle-check' : 'triangle-exclamation']" />
+                  {{ student.has_embedding ? 'Completo' : 'Sin foto' }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -191,9 +146,10 @@
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
                   @click="confirmDelete(student)"
-                  class="text-red-600 hover:text-red-900 ml-3"
+                  class="text-red-600 hover:text-red-900 ml-3 inline-flex items-center gap-1"
                 >
-                  🗑️ Eliminar
+                  <FontAwesomeIcon :icon="['fas', 'trash']" />
+                  Eliminar
                 </button>
               </td>
             </tr>
@@ -210,14 +166,20 @@
     >
       <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-0 overflow-hidden">
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-          <h2 class="text-2xl font-bold text-white">➕ Registrar Nuevo Estudiante</h2>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'plus']" />
+            Registrar Nuevo Estudiante
+          </h2>
           <p class="text-blue-100 text-sm">Complete los datos y capture la foto del estudiante</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
           <!-- Camera Section -->
           <div>
-            <h3 class="text-lg font-bold text-slate-800 mb-3">📸 Captura de Rostro</h3>
+            <h3 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <FontAwesomeIcon :icon="['fas', 'camera']" class="text-[#b81a16]" />
+              Captura de Rostro
+            </h3>
             
             <div class="relative bg-slate-900 rounded-xl overflow-hidden mb-4" style="aspect-ratio: 4/3;">
               <video
@@ -237,9 +199,10 @@
               <div v-if="!capturedPhoto && !isCameraActive" class="absolute inset-0 flex items-center justify-center">
                 <button
                   @click="startCamera"
-                  class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  class="px-6 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] inline-flex items-center gap-2"
                 >
-                  📷 Activar Cámara
+                  <FontAwesomeIcon :icon="['fas', 'camera']" />
+                  Activar Camara
                 </button>
               </div>
             </div>
@@ -248,30 +211,35 @@
               <button
                 v-if="isCameraActive && !capturedPhoto"
                 @click="capturePhoto"
-                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center justify-center gap-2"
               >
-                📸 Capturar
+                <FontAwesomeIcon :icon="['fas', 'camera']" />
+                Capturar
               </button>
               <button
                 v-if="capturedPhoto"
                 @click="retakePhoto"
-                class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+                class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 inline-flex items-center justify-center gap-2"
               >
-                🔄 Tomar Otra
+                <FontAwesomeIcon :icon="['fas', 'arrows-rotate']" />
+                Tomar Otra
               </button>
               <button
                 v-if="isCameraActive"
                 @click="stopCamera"
                 class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
-                ⏹️
+                <FontAwesomeIcon :icon="['fas', 'stop']" />
               </button>
             </div>
           </div>
 
           <!-- Form Section -->
           <div>
-            <h3 class="text-lg font-bold text-slate-800 mb-3">📝 Datos del Estudiante</h3>
+            <h3 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <FontAwesomeIcon :icon="['fas', 'file-pen']" class="text-[#b81a16]" />
+              Datos del Estudiante
+            </h3>
             
             <form @submit.prevent="handleRegister" class="space-y-4">
               <div>
@@ -281,7 +249,7 @@
                   type="text"
                   required
                   maxlength="10"
-                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                   placeholder="Ej: 0102345678"
                 />
               </div>
@@ -292,7 +260,7 @@
                   v-model="formData.fullName"
                   type="text"
                   required
-                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                   placeholder="Ej: Juan Pérez García"
                 />
               </div>
@@ -303,7 +271,7 @@
                   v-model="formData.email"
                   type="email"
                   required
-                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                   placeholder="estudiante@email.com"
                 />
               </div>
@@ -319,15 +287,17 @@
               <!-- Status -->
               <div class="p-3 bg-slate-50 rounded-lg">
                 <div class="flex items-center gap-2 text-sm">
-                  <span :class="capturedPhoto ? 'text-green-600' : 'text-slate-400'">
-                    {{ capturedPhoto ? '✅' : '⏸️' }}
-                  </span>
+                  <FontAwesomeIcon 
+                    :icon="['fas', capturedPhoto ? 'circle-check' : 'pause']" 
+                    :class="capturedPhoto ? 'text-green-600' : 'text-slate-400'" 
+                  />
                   <span class="text-slate-600">Foto capturada</span>
                 </div>
                 <div class="flex items-center gap-2 text-sm mt-1">
-                  <span :class="formData.studentId && formData.fullName && formData.email ? 'text-green-600' : 'text-slate-400'">
-                    {{ formData.studentId && formData.fullName && formData.email ? '✅' : '⏸️' }}
-                  </span>
+                  <FontAwesomeIcon 
+                    :icon="['fas', formData.studentId && formData.fullName && formData.email ? 'circle-check' : 'pause']" 
+                    :class="formData.studentId && formData.fullName && formData.email ? 'text-green-600' : 'text-slate-400'" 
+                  />
                   <span class="text-slate-600">Datos completos</span>
                 </div>
               </div>
@@ -343,9 +313,10 @@
                 <button
                   type="submit"
                   :disabled="!capturedPhoto || isSubmitting"
-                  class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex-1 px-4 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
-                  {{ isSubmitting ? 'Registrando...' : '✅ Registrar' }}
+                  <FontAwesomeIcon v-if="!isSubmitting" :icon="['fas', 'circle-check']" />
+                  {{ isSubmitting ? 'Registrando...' : 'Registrar' }}
                 </button>
               </div>
             </form>
@@ -355,46 +326,37 @@
     </div>
 
     <!-- Modal: Confirmar Eliminación -->
-    <div
-      v-if="studentToDelete"
-      class="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center p-4 z-50"
-      @click.self="studentToDelete = null"
+    <ConfirmModal
+      :show="!!studentToDelete"
+      title="Confirmar Eliminacion"
+      icon="triangle-exclamation"
+      icon-color="warning"
+      confirm-text="Eliminar"
+      confirm-icon="trash"
+      :loading="deleting"
+      loading-text="Eliminando..."
+      @confirm="deleteStudent"
+      @cancel="studentToDelete = null"
     >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <h2 class="text-xl font-bold text-slate-900 mb-4">⚠️ Confirmar Eliminación</h2>
-        <p class="text-slate-600 mb-6">
-          ¿Estás seguro de eliminar a <strong>{{ studentToDelete.name }}</strong>?
-          <br><br>
-          <span class="text-red-600 text-sm">Esta acción eliminará al estudiante de todas las materias y no se puede deshacer.</span>
-        </p>
-        <div class="flex gap-3">
-          <button
-            @click="studentToDelete = null"
-            class="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium"
-          >
-            Cancelar
-          </button>
-          <button
-            @click="deleteStudent"
-            :disabled="deleting"
-            class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
-          >
-            {{ deleting ? 'Eliminando...' : '🗑️ Eliminar' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      <p class="mb-4">
+        Estas seguro de eliminar a <strong>{{ studentToDelete?.name }}</strong>?
+      </p>
+      <p class="text-red-600 text-sm">
+        Esta accion eliminara al estudiante de todas las materias y no se puede deshacer.
+      </p>
+    </ConfirmModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { enrollmentService } from '@/services/enrollment.service'
-import { supabase } from '@/services/supabase'
 import type { Student } from '@/types'
-
-const router = useRouter()
+import PageHeader from '@/components/PageHeader.vue'
+import StatsCard from '@/components/StatsCard.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 // State
 const loading = ref(true)
@@ -583,11 +545,6 @@ const formatDate = (dateString: string | undefined) => {
     month: 'short',
     year: 'numeric'
   }).format(new Date(dateString))
-}
-
-const handleLogout = async () => {
-  await supabase.auth.signOut()
-  router.push('/login')
 }
 
 onMounted(() => {

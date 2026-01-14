@@ -4,20 +4,26 @@
  */
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Navbar />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-8">✅ Toma de Asistencia</h1>
+      <PageHeader
+        title="Toma de Asistencia"
+        icon="clipboard-check"
+        icon-color="green"
+      />
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Camera Section -->
         <div class="lg:col-span-2">
           <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-4">
-              <h2 class="text-xl font-bold text-gray-900">📸 Verificación Facial</h2>
+              <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <FontAwesomeIcon :icon="['fas', 'camera']" class="text-[#b81a16]" />
+                Verificacion Facial
+              </h2>
               <select
                 v-model="selectedClassId"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
               >
                 <option value="">Seleccionar clase...</option>
                 <option v-for="classItem in activeClasses" :key="classItem.id" :value="classItem.id">
@@ -54,26 +60,29 @@
               <button
                 v-if="!isCameraActive"
                 @click="startCamera"
-                class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                class="flex-1 px-4 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors inline-flex items-center justify-center gap-2"
               >
-                📷 Activar Cámara
+                <FontAwesomeIcon :icon="['fas', 'camera']" />
+                Activar Camara
               </button>
               
               <button
                 v-if="isCameraActive && !capturedPhoto"
                 @click="captureAndVerify"
                 :disabled="!selectedClassId || verifying"
-                class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
               >
-                ✅ Verificar Asistencia
+                <FontAwesomeIcon :icon="['fas', 'circle-check']" />
+                Verificar Asistencia
               </button>
 
               <button
                 v-if="capturedPhoto"
                 @click="resetCapture"
-                class="flex-1 px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                class="flex-1 px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors inline-flex items-center justify-center gap-2"
               >
-                🔄 Otra Verificación
+                <FontAwesomeIcon :icon="['fas', 'arrows-rotate']" />
+                Otra Verificacion
               </button>
 
               <button
@@ -81,7 +90,7 @@
                 @click="stopCamera"
                 class="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
-                ⏹️
+                <FontAwesomeIcon :icon="['fas', 'stop']" />
               </button>
             </div>
 
@@ -93,8 +102,9 @@
                 Estudiante: {{ verificationResult.student_name }} (Confianza: {{ Math.round(verificationResult.confidence * 100) }}%)
               </p>
               <!-- Warning for already registered attendance -->
-              <p v-if="verificationResult.already_registered" class="text-sm mt-2 text-yellow-700 font-medium">
-                ℹ️ La asistencia fue registrada previamente a las {{ formatTime(verificationResult.timestamp) }}
+              <p v-if="verificationResult.already_registered" class="text-sm mt-2 text-yellow-700 font-medium inline-flex items-center gap-1">
+                <FontAwesomeIcon :icon="['fas', 'circle-info']" />
+                La asistencia fue registrada previamente a las {{ formatTime(verificationResult.timestamp) }}
               </p>
               <div v-if="detectedEmotion" class="mt-2 p-2 bg-purple-50 rounded border-l-2 border-purple-400">
                 <p class="text-sm font-medium text-purple-700">
@@ -108,7 +118,10 @@
 
         <!-- Attendance Log -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">📋 Registro de Asistencia</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'clipboard-list']" class="text-[#b81a16]" />
+            Registro de Asistencia
+          </h2>
           
           <div v-if="attendanceRecords.length === 0" class="text-center text-gray-500 py-8">
             <p>No hay registros aún</p>
@@ -135,12 +148,13 @@
                   </p>
                   <div class="mt-2 flex items-center gap-2">
                     <span 
-                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium gap-1"
                       :class="record.status === 'late' 
                         ? 'bg-orange-100 text-orange-800' 
                         : 'bg-green-100 text-green-800'"
                     >
-                      {{ record.status === 'late' ? '⏰ Atrasado' : '✓ Presente' }}
+                      <FontAwesomeIcon :icon="['fas', record.status === 'late' ? 'clock' : 'check']" />
+                      {{ record.status === 'late' ? 'Atrasado' : 'Presente' }}
                     </span>
                     <span 
                       class="text-xs font-medium"
@@ -162,11 +176,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import Navbar from '@/components/Navbar.vue'
 import { classesService } from '@/services/classes.service'
 import { attendanceService } from '@/services/attendance.service'
 import { emotionsService } from '@/services/emotions.service'
 import type { ClassSession, AttendanceRecord } from '@/types'
+import PageHeader from '@/components/PageHeader.vue'
 
 const route = useRoute()
 

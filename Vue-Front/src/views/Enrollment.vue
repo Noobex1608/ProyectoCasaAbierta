@@ -4,12 +4,14 @@
  */
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Navbar />
 
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">➕ Registrar Nuevo Estudiante</h1>
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <FontAwesomeIcon :icon="['fas', 'plus']" class="text-[#b81a16]" />
+          Registrar Nuevo Estudiante
+        </h1>
         <p class="mt-2 text-sm text-gray-600">
           Captura la foto del estudiante para el reconocimiento facial
         </p>
@@ -18,7 +20,10 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Camera Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">📸 Captura de Rostro</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'camera']" class="text-[#b81a16]" />
+            Captura de Rostro
+          </h2>
 
           <!-- Camera/Photo Display -->
           <div class="relative bg-gray-900 rounded-lg overflow-hidden mb-4" style="aspect-ratio: 4/3;">
@@ -39,7 +44,7 @@
             
             <!-- Camera Overlay -->
             <div v-if="!capturedPhoto" class="absolute inset-0 pointer-events-none">
-              <div class="absolute inset-0 border-4 border-indigo-500 rounded-full m-auto" style="width: 60%; height: 80%;"></div>
+              <div class="absolute inset-0 border-4 border-[#b81a16] rounded-full m-auto" style="width: 60%; height: 80%;"></div>
               <p class="absolute bottom-4 left-0 right-0 text-center text-white text-sm backdrop-blur-sm bg-black/40 py-2">
                 Centra tu rostro en el círculo
               </p>
@@ -51,25 +56,28 @@
             <button
               v-if="!isCameraActive && !capturedPhoto"
               @click="startCamera"
-              class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
+              class="flex-1 px-4 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors duration-200 font-medium inline-flex items-center justify-center gap-2"
             >
-              📷 Activar Cámara
+              <FontAwesomeIcon :icon="['fas', 'camera']" />
+              Activar Camara
             </button>
             
             <button
               v-if="isCameraActive && !capturedPhoto"
               @click="capturePhoto"
-              class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium"
+              class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium inline-flex items-center justify-center gap-2"
             >
-              📸 Capturar Foto
+              <FontAwesomeIcon :icon="['fas', 'camera']" />
+              Capturar Foto
             </button>
 
             <button
               v-if="capturedPhoto"
               @click="retakePhoto"
-              class="flex-1 px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-200 font-medium"
+              class="flex-1 px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-200 font-medium inline-flex items-center justify-center gap-2"
             >
-              🔄 Tomar Otra
+              <FontAwesomeIcon :icon="['fas', 'arrows-rotate']" />
+              Tomar Otra
             </button>
 
             <button
@@ -77,13 +85,16 @@
               @click="stopCamera"
               class="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium"
             >
-              ⏹️
+              <FontAwesomeIcon :icon="['fas', 'stop']" />
             </button>
           </div>
 
           <!-- Instructions -->
           <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h3 class="font-semibold text-gray-900 mb-2">💡 Consejos para una mejor captura:</h3>
+            <h3 class="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <FontAwesomeIcon :icon="['fas', 'lightbulb']" class="text-yellow-500" />
+              Consejos para una mejor captura:
+            </h3>
             <ul class="text-sm text-gray-600 space-y-1">
               <li>• Asegúrate de tener buena iluminación</li>
               <li>• Mira directamente a la cámara</li>
@@ -95,7 +106,10 @@
 
         <!-- Form Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">📝 Información del Estudiante</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'file-pen']" class="text-[#b81a16]" />
+            Informacion del Estudiante
+          </h2>
 
           <form @submit.prevent="handleEnrollment" class="space-y-4">
             <!-- Cédula -->
@@ -108,7 +122,7 @@
                 v-model="formData.studentId"
                 type="text"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                 placeholder="Ej: 0102345678"
                 maxlength="10"
               />
@@ -124,7 +138,7 @@
                 v-model="formData.fullName"
                 type="text"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                 placeholder="Ej: Juan Pérez García"
               />
             </div>
@@ -139,7 +153,7 @@
                 v-model="formData.email"
                 type="email"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
                 placeholder="estudiante@universidad.edu"
               />
             </div>
@@ -158,7 +172,7 @@
             <button
               type="submit"
               :disabled="!capturedPhoto || isSubmitting"
-              class="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              class="w-full px-4 py-3 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               <svg
                 v-if="isSubmitting"
@@ -170,7 +184,8 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ isSubmitting ? 'Registrando...' : '✅ Registrar Estudiante' }}
+              <FontAwesomeIcon v-if="!isSubmitting" :icon="['fas', 'circle-check']" class="mr-2" />
+              {{ isSubmitting ? 'Registrando...' : 'Registrar Estudiante' }}
             </button>
           </form>
 
@@ -179,16 +194,18 @@
             <h3 class="font-semibold text-gray-900 mb-2">Estado del Registro:</h3>
             <div class="space-y-2 text-sm">
               <div class="flex items-center">
-                <span :class="capturedPhoto ? 'text-green-600' : 'text-gray-400'">
-                  {{ capturedPhoto ? '✅' : '⏸️' }}
-                </span>
+                <FontAwesomeIcon 
+                  :icon="['fas', capturedPhoto ? 'circle-check' : 'pause']" 
+                  :class="capturedPhoto ? 'text-green-600' : 'text-gray-400'" 
+                />
                 <span class="ml-2 text-gray-600">Foto capturada</span>
               </div>
               <div class="flex items-center">
-                <span :class="formData.studentId && formData.fullName && formData.email ? 'text-green-600' : 'text-gray-400'">
-                  {{ formData.studentId && formData.fullName && formData.email ? '✅' : '⏸️' }}
-                </span>
-                <span class="ml-2 text-gray-600">Información completa</span>
+                <FontAwesomeIcon 
+                  :icon="['fas', formData.studentId && formData.fullName && formData.email ? 'circle-check' : 'pause']" 
+                  :class="formData.studentId && formData.fullName && formData.email ? 'text-green-600' : 'text-gray-400'" 
+                />
+                <span class="ml-2 text-gray-600">Informacion completa</span>
               </div>
             </div>
           </div>
@@ -211,7 +228,6 @@
 <script setup lang="ts">
 import { ref, reactive, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Navbar from '@/components/Navbar.vue'
 import { enrollmentService } from '@/services/enrollment.service'
 
 const router = useRouter()
