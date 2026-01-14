@@ -9,10 +9,18 @@ export const attendanceService = {
   /**
    * Verify student attendance with facial recognition
    */
-  async verifyAttendance(data: AttendanceRequest): Promise<any> {
-    const formData = new FormData()
-    formData.append('class_id', data.class_id.toString())
-    formData.append('image', data.image)
+  async verifyAttendance(data: AttendanceRequest | FormData): Promise<any> {
+    let formData: FormData
+    
+    // Si ya es FormData, usarlo directamente
+    if (data instanceof FormData) {
+      formData = data
+    } else {
+      // Si no, construir el FormData
+      formData = new FormData()
+      formData.append('class_id', data.class_id.toString())
+      formData.append('image', data.image)
+    }
 
     const response = await apiClient.post(
       '/attendance/verify',

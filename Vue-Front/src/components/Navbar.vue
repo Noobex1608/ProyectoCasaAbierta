@@ -17,7 +17,7 @@
         </div>
 
         <!-- Navigation Links (Desktop) - Solo visible cuando está autenticado -->
-        <div v-if="isAuthenticated" class="hidden md:flex items-center space-x-1">
+        <div v-if="isAuthenticated && showNavLinks" class="hidden md:flex items-center space-x-1">
           <router-link
             v-for="link in navLinks"
             :key="link.path"
@@ -82,7 +82,7 @@
     </div>
 
     <!-- Mobile menu - Solo visible cuando está autenticado -->
-    <div v-if="mobileMenuOpen && isAuthenticated" class="md:hidden border-t border-white/20">
+    <div v-if="mobileMenuOpen && isAuthenticated && showNavLinks" class="md:hidden border-t border-white/20">
       <div class="px-3 pt-3 pb-4 space-y-1">
         <router-link
           v-for="link in navLinks"
@@ -123,11 +123,15 @@ const mobileMenuOpen = ref(false)
 
 const navLinks = [
   { name: 'Dashboard', path: '/dashboard', icon: 'gauge-high' },
-  { name: 'Estudiantes', path: '/students', icon: 'users' },
   { name: 'Clases', path: '/classes', icon: 'calendar-days' },
   { name: 'Asistencia', path: '/attendance', icon: 'clipboard-check' },
   { name: 'Emociones', path: '/emotions', icon: 'face-smile' }
 ]
+
+// Mostrar links de navegación solo cuando NO estemos en el dashboard principal
+const showNavLinks = computed(() => {
+  return route.path !== '/dashboard'
+})
 
 const initials = computed(() => {
   if (!profile.value?.full_name) return 'U'

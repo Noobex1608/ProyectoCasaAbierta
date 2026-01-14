@@ -40,6 +40,7 @@ python-dotenv==1.0.0
 
 # ---- Utils ----
 python-dateutil==2.8.2
+pytz>=2024.1
 # Se eliminó pydantic-core manual para evitar conflictos
 
 # ---- Development (Optional) ----

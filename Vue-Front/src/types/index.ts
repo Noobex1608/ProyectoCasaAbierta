@@ -28,11 +28,20 @@ export interface Student {
 
 export interface ClassSession {
   id: number
+  class_id?: string
   class_name: string
   course_id?: number
   start_time: string
   end_time: string | null
   created_at: string
+  is_active?: boolean  // Campo dinámico agregado por el backend
+  status?: 'active' | 'finished'  // Campo dinámico agregado por el backend
+  instructor?: string
+  room?: string
+  total_students?: number
+  present_count?: number
+  attendance_rate?: number
+  metadata?: { course_id?: string; teacher_id?: string } | null  // Metadata del backend
 }
 
 export interface AttendanceRecord {
@@ -102,14 +111,14 @@ export interface EmotionResponse {
 }
 
 export interface ClassCreateRequest {
-  class_id: string
   class_name: string
-  course_id?: string
+  session_date: string
   start_time: string
-  end_time?: string
+  end_time: string
   instructor?: string
   room?: string
-  metadata?: Record<string, any>
+  teacher_id?: string
+  course_id?: string
 }
 
 export interface ClassCreateResponse {

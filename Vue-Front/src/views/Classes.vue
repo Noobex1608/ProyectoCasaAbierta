@@ -64,7 +64,7 @@
                   </p>
                   <p class="flex items-center gap-2">
                     <FontAwesomeIcon :icon="['fas', 'stopwatch']" class="text-gray-400 w-4" />
-                    Duracion: {{ getDuration(classItem.start_time) }}
+                    Duracion: {{ getDuration(classItem.start_time, classItem.end_time || '') }}
                   </p>
                   <p class="flex items-center gap-2">
                     <FontAwesomeIcon :icon="['fas', 'id-card']" class="text-gray-400 w-4" />
@@ -168,15 +168,16 @@
         @click.self="showCreateModal = false"
       >
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <FontAwesomeIcon :icon="['fas', 'file-pen']" class="text-[#b81a16]" />
-            Nueva Clase
+          <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'calendar-plus']" class="text-[#b81a16]" />
+            Nueva Sesión de Clase
           </h2>
 
           <form @submit.prevent="createClass">
+            <!-- Nombre de la Sesión -->
             <div class="mb-4">
               <label for="className" class="block text-sm font-medium text-gray-700 mb-2">
-                Nombre de la Clase
+                Nombre de la Sesión <span class="text-red-500">*</span>
               </label>
               <input
                 id="className"
@@ -184,7 +185,56 @@
                 type="text"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
-                placeholder="Ej: Matemáticas - Sección A"
+                placeholder="Ej: Clase de Introducción"
+              />
+            </div>
+
+            <!-- Nota informativa -->
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-sm text-blue-700">
+                ℹ️ Para crear clases con estudiantes específicos, usa el botón "Iniciar Sesión" desde la vista de cada curso.
+              </p>
+            </div>
+
+            <!-- Fecha -->
+            <div class="mb-4">
+              <label for="classDate" class="block text-sm font-medium text-gray-700 mb-2">
+                Fecha <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="classDate"
+                v-model="newClassDate"
+                type="date"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
+              />
+            </div>
+
+            <!-- Hora de Inicio -->
+            <div class="mb-4">
+              <label for="startTime" class="block text-sm font-medium text-gray-700 mb-2">
+                Hora de Inicio <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="startTime"
+                v-model="newStartTime"
+                type="time"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
+              />
+            </div>
+
+            <!-- Hora de Fin -->
+            <div class="mb-4">
+              <label for="endTime" class="block text-sm font-medium text-gray-700 mb-2">
+                Hora de Fin <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="endTime"
+                v-model="newEndTime"
+                type="time"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
               />
             </div>
 
@@ -208,7 +258,7 @@
                 :disabled="creating"
                 class="flex-1 px-4 py-2 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors duration-200 font-medium disabled:opacity-50"
               >
-                {{ creating ? 'Creando...' : 'Crear Clase' }}
+                {{ creating ? 'Creando...' : 'Crear Sesión' }}
               </button>
             </div>
           </form>
@@ -267,6 +317,11 @@ const loading = ref(true)
 const classes = ref<ClassSession[]>([])
 const showCreateModal = ref(false)
 const newClassName = ref('')
+// Inicializar con fecha y hora actual
+const today = new Date()
+const newClassDate = ref(today.toISOString().split('T')[0])
+const newStartTime = ref(today.toTimeString().slice(0, 5))
+const newEndTime = ref('')
 const creating = ref(false)
 const createError = ref('')
 const classToEnd = ref<ClassSession | null>(null)
@@ -274,13 +329,56 @@ const ending = ref(false)
 const classToDelete = ref<ClassSession | null>(null)
 const deleting = ref(false)
 
-const activeClasses = computed(() => 
-  classes.value.filter(c => !c.end_time)
-)
+const activeClasses = computed(() => {
+  // Una clase está activa si el backend la marca como activa
+  // o si el backend no envía el campo is_active, usar la lógica local
+  const now = new Date()
+  
+  return classes.value.filter(c => {
+    // Si el backend envía is_active, usarlo (prioridad)
+    if (c.hasOwnProperty('is_active')) {
+      return c.is_active === true
+    }
+    // Si el backend envía status, usarlo
+    if (c.hasOwnProperty('status')) {
+      return c.status === 'active'
+    }
+    // Fallback: verificar manualmente con fechas
+    if (!c.end_time || !c.start_time) return false
+    
+    const startTime = new Date(c.start_time)
+    const endTime = new Date(c.end_time)
+    
+    // La clase está activa si: inicio <= ahora < fin
+    const isActive = startTime <= now && now < endTime
+    console.log(`Clase ${c.class_name}: inicio=${startTime.toISOString()}, fin=${endTime.toISOString()}, ahora=${now.toISOString()}, activa=${isActive}`)
+    
+    return isActive
+  })
+})
 
-const pastClasses = computed(() => 
-  classes.value.filter(c => c.end_time).reverse()
-)
+const pastClasses = computed(() => {
+  // Una clase está finalizada si el backend la marca como no activa
+  const now = new Date()
+  
+  return classes.value.filter(c => {
+    // Si el backend envía is_active, usarlo (prioridad)
+    if (c.hasOwnProperty('is_active')) {
+      return c.is_active === false
+    }
+    // Si el backend envía status, usarlo
+    if (c.hasOwnProperty('status')) {
+      return c.status === 'finished'
+    }
+    // Fallback: verificar manualmente
+    if (!c.end_time || !c.start_time) return true
+    
+    const endTime = new Date(c.end_time)
+    
+    // La clase está finalizada si: ahora >= fin
+    return now >= endTime
+  }).reverse()
+})
 
 const loadClasses = async () => {
   loading.value = true
@@ -294,16 +392,39 @@ const loadClasses = async () => {
 }
 
 const createClass = async () => {
-  if (!newClassName.value.trim()) return
+  if (!newClassName.value.trim() || !newClassDate.value || !newStartTime.value || !newEndTime.value) {
+    createError.value = 'Por favor completa todos los campos'
+    return
+  }
+
+  // Validar que la hora de fin sea posterior a la hora de inicio
+  const start = new Date(`${newClassDate.value}T${newStartTime.value}`)
+  const end = new Date(`${newClassDate.value}T${newEndTime.value}`)
+  
+  if (end <= start) {
+    createError.value = 'La hora de fin debe ser posterior a la hora de inicio'
+    return
+  }
 
   creating.value = true
   createError.value = ''
 
   try {
-    await classesService.createClass({ class_name: newClassName.value })
+    // Clase general sin curso específico
+    await classesService.createClass({ 
+      class_name: newClassName.value,
+      session_date: newClassDate.value,
+      start_time: newStartTime.value,
+      end_time: newEndTime.value
+    })
     await loadClasses()
     showCreateModal.value = false
+    // Limpiar formulario y resetear a valores por defecto
     newClassName.value = ''
+    const now = new Date()
+    newClassDate.value = now.toISOString().split('T')[0]
+    newStartTime.value = now.toTimeString().slice(0, 5)
+    newEndTime.value = ''
   } catch (error: any) {
     createError.value = error.response?.data?.detail || 'Error al crear la clase'
   } finally {
@@ -312,6 +433,7 @@ const createClass = async () => {
 }
 
 const confirmEndClass = (classItem: ClassSession) => {
+  console.log('🔚 Solicitando finalizar clase:', classItem)
   classToEnd.value = classItem
 }
 
@@ -320,11 +442,23 @@ const endClass = async () => {
 
   ending.value = true
   try {
-    await classesService.endClass(classToEnd.value.class_id)
+    if (!classToEnd.value.class_id) {
+      throw new Error('ID de clase no válido')
+    }
+    console.log('⏱️ Finalizando clase:', classToEnd.value.class_id)
+    const result = await classesService.endClass(classToEnd.value.class_id)
+    console.log('✅ Clase finalizada:', result)
+    
+    // Pequeño delay para asegurar que la BD se actualizó
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Recargar lista de clases
     await loadClasses()
     classToEnd.value = null
-  } catch {
-    alert('Error al finalizar la clase')
+  } catch (error: any) {
+    console.error('❌ Error al finalizar clase:', error)
+    const errorMsg = error.response?.data?.detail || error.message || 'Error al finalizar la clase'
+    alert(`Error: ${errorMsg}`)
   } finally {
     ending.value = false
   }
@@ -339,6 +473,9 @@ const deleteClass = async () => {
 
   deleting.value = true
   try {
+    if (!classToDelete.value.class_id) {
+      throw new Error('ID de clase no válido')
+    }
     await classesService.deleteClass(classToDelete.value.class_id)
     classes.value = classes.value.filter(c => c.class_id !== classToDelete.value!.class_id)
     classToDelete.value = null
@@ -359,11 +496,17 @@ const formatDateTime = (dateString: string) => {
   }).format(date)
 }
 
-const getDuration = (startTime: string) => {
+const getDuration = (startTime: string, endTime?: string) => {
   const start = new Date(startTime)
-  const now = new Date()
-  const diff = now.getTime() - start.getTime()
+  const end = endTime ? new Date(endTime) : new Date()
+  const diff = end.getTime() - start.getTime()
   const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  
+  if (hours > 0) {
+    return `${hours}h ${mins}min`
+  }
   return `${minutes} min`
 }
 
@@ -372,6 +515,12 @@ const getClassDuration = (startTime: string, endTime: string) => {
   const end = new Date(endTime)
   const diff = end.getTime() - start.getTime()
   const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  
+  if (hours > 0) {
+    return `${hours}h ${mins}min`
+  }
   return `${minutes} min`
 }
 

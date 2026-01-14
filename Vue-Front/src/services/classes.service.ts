@@ -11,7 +11,7 @@ export const classesService = {
    */
   async createClass(data: ClassCreateRequest): Promise<ClassCreateResponse> {
     const response = await apiClient.post<ClassCreateResponse>(
-      '/classes/create',
+      '/classes',
       data
     )
     return response.data

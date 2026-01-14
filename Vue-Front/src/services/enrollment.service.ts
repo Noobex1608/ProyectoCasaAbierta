@@ -42,6 +42,15 @@ export const enrollmentService = {
   },
 
   /**
+   * Get students enrolled in a specific course
+   */
+  async getCourseStudents(courseId: string | number): Promise<Student[]> {
+    const response = await apiClient.get<any>(`/enrollments/course/${courseId}`)
+    // Backend returns { success, message, data: { students: [...] } }
+    return response.data?.data?.students || []
+  },
+
+  /**
    * Get a specific student by ID
    */
   async getStudent(studentId: number): Promise<Student> {

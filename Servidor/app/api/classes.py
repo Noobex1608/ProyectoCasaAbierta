@@ -5,12 +5,27 @@ Endpoints for class session management
 from fastapi import APIRouter, HTTPException, status
 from typing import Optional, List
 from datetime import datetime
+import pytz
 from app.core.schemas import BaseResponse
 from app.db.supabase_client import get_supabase
 from app.core.logger import logger
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/classes", tags=["Classes"])
+
+# Zona horaria de Ecuador (UTC-5)
+ECUADOR_TZ = pytz.timezone('America/Guayaquil')
+
+def get_ecuador_time():
+    """Obtiene la hora actual en zona horaria de Ecuador (UTC-5)"""
+    return datetime.now(ECUADOR_TZ)
+
+def to_ecuador_time(dt: datetime):
+    """Convierte un datetime a zona horaria de Ecuador"""
+    if dt.tzinfo is None:
+        # Si es naive, asumimos que es UTC
+        dt = pytz.utc.localize(dt)
+    return dt.astimezone(ECUADOR_TZ)
 
 
 # ============================================================================
@@ -98,24 +113,65 @@ async def create_class_simple(request: ClassCreateSimpleRequest):
         # Generate unique class_id
         class_id = f"CLASS-{uuid.uuid4().hex[:8].upper()}"
         
-        # Combine date and time strings into datetime objects
-        start_datetime = datetime.fromisoformat(f"{request.session_date}T{request.start_time}:00")
-        end_datetime = datetime.fromisoformat(f"{request.session_date}T{request.end_time}:00")
+        # Combine date and time strings into datetime objects using Ecuador timezone
+        # Crear datetime naive primero y luego localizarlo a Ecuador
+        start_datetime_naive = datetime.fromisoformat(f"{request.session_date}T{request.start_time}:00")
+        end_datetime_naive = datetime.fromisoformat(f"{request.session_date}T{request.end_time}:00")
+        
+        # Localizar a zona horaria de Ecuador
+        start_datetime = ECUADOR_TZ.localize(start_datetime_naive)
+        end_datetime = ECUADOR_TZ.localize(end_datetime_naive)
+        
+        # Obtener hora actual en Ecuador
+        now_ecuador = get_ecuador_time()
+        
+        # Validar que la clase no tenga una duración inválida
+        duration_hours = (end_datetime - start_datetime).total_seconds() / 3600
+        if duration_hours <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La hora de fin debe ser posterior a la hora de inicio"
+            )
+        if duration_hours > 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"La duración de la clase no puede exceder 8 horas (actual: {duration_hours:.1f}h)"
+            )
+        
+        # Preparar metadata con teacher_id y course_id si existen
+        metadata_dict = {}
+        if request.teacher_id:
+            metadata_dict['teacher_id'] = request.teacher_id
+        if request.course_id:
+            metadata_dict['course_id'] = request.course_id
+        
+        # Convertir a UTC para guardar en la base de datos
+        # PostgreSQL almacena en UTC, así que debemos enviar UTC
+        start_datetime_utc = start_datetime.astimezone(pytz.utc)
+        end_datetime_utc = end_datetime.astimezone(pytz.utc)
+        
+        # Log para debugging
+        logger.info(f"⏰ Creando clase:")
+        logger.info(f"  - Hora actual Ecuador: {now_ecuador.isoformat()}")
+        logger.info(f"  - Inicio programado Ecuador: {start_datetime.isoformat()}")
+        logger.info(f"  - Inicio UTC (guardado): {start_datetime_utc.isoformat()}")
+        logger.info(f"  - Fin programado Ecuador: {end_datetime.isoformat()}")
+        logger.info(f"  - Fin UTC (guardado): {end_datetime_utc.isoformat()}")
+        logger.info(f"  - ¿Está activa? {start_datetime <= now_ecuador < end_datetime}")
         
         # Create class session
+        # La clase estará activa si aún no ha terminado
         class_data = {
             "class_id": class_id,
             "class_name": request.class_name,
             "instructor": request.instructor or "No especificado",
             "room": request.room or "No especificada",
-            "start_time": start_datetime.isoformat(),
-            "end_time": end_datetime.isoformat(),
+            "start_time": start_datetime_utc.isoformat(),
+            "end_time": end_datetime_utc.isoformat(),
             "total_students": 0,
             "present_count": 0,
             "attendance_rate": 0.0,
-            "metadata": None,
-            "teacher_id": request.teacher_id,
-            "course_id": request.course_id
+            "metadata": metadata_dict if metadata_dict else None
         }
         
         result = supabase.table("class_sessions").insert(class_data).execute()
@@ -191,13 +247,43 @@ async def create_class(request: ClassCreateRequest):
         if request.course_id:
             metadata['course_id'] = request.course_id
         
+        # Convertir tiempos a zona horaria de Ecuador si no tienen zona horaria
+        start_time = request.start_time
+        end_time = request.end_time
+        
+        if start_time.tzinfo is None:
+            start_time = ECUADOR_TZ.localize(start_time)
+        else:
+            start_time = start_time.astimezone(ECUADOR_TZ)
+        
+        if end_time:
+            if end_time.tzinfo is None:
+                end_time = ECUADOR_TZ.localize(end_time)
+            else:
+                end_time = end_time.astimezone(ECUADOR_TZ)
+            
+            # Validate duration (max 8 hours)
+            duration_hours = (end_time - start_time).total_seconds() / 3600
+            if duration_hours > 8:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Class duration cannot exceed 8 hours (current: {duration_hours:.1f}h)"
+                )
+            if duration_hours <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="End time cannot be before or equal to start time"
+                )
+        
+        # La clase siempre se crea con su end_time programado
+        # El estado (activa/finalizada) se determina dinámicamente según la hora actual
         class_data = {
             "class_id": request.class_id,
             "class_name": request.class_name,
             "instructor": request.instructor,
             "room": request.room,
-            "start_time": request.start_time.isoformat(),
-            "end_time": request.end_time.isoformat() if request.end_time else None,
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat() if end_time else None,
             "total_students": 0,
             "present_count": 0,
             "attendance_rate": 0.0,
@@ -234,27 +320,54 @@ async def create_class(request: ClassCreateRequest):
     "/active",
     response_model=BaseResponse,
     summary="Get active class sessions",
-    description="Get all class sessions that are currently active (end_time is null)"
+    description="Get all class sessions that are currently active based on Ecuador time (UTC-5)"
 )
 async def get_active_classes():
     """
-    Get all active class sessions (sessions without end_time)
+    Get all active class sessions (sessions where current time is between start_time and end_time)
     """
     try:
         supabase = get_supabase()
         
+        # Obtener todas las clases
         result = supabase.table("class_sessions")\
             .select("*")\
-            .is_("end_time", "null")\
             .order("start_time", desc=True)\
             .execute()
         
+        # Filtrar clases activas basándose en la hora actual de Ecuador
+        now_ecuador = get_ecuador_time()
+        active_classes = []
+        
+        for class_session in result.data:
+            start_time = datetime.fromisoformat(class_session['start_time'].replace('Z', '+00:00'))
+            end_time = datetime.fromisoformat(class_session['end_time'].replace('Z', '+00:00'))
+            
+            # Convertir a hora de Ecuador
+            start_time_ecuador = to_ecuador_time(start_time)
+            end_time_ecuador = to_ecuador_time(end_time)
+            
+            # Extraer course_id y teacher_id del metadata si existen
+            metadata = class_session.get('metadata', {}) or {}
+            if isinstance(metadata, dict):
+                if 'course_id' in metadata:
+                    class_session['course_id'] = metadata['course_id']
+                if 'teacher_id' in metadata:
+                    class_session['teacher_id'] = metadata['teacher_id']
+            
+            # Una clase está activa si:
+            # 1. Ya comenzó (start_time <= now)
+            # 2. Aún no ha terminado (now < end_time)
+            if start_time_ecuador <= now_ecuador < end_time_ecuador:
+                active_classes.append(class_session)
+        
         return BaseResponse(
             success=True,
-            message=f"Retrieved {len(result.data)} active class sessions",
+            message=f"Retrieved {len(active_classes)} active class sessions",
             data={
-                "classes": result.data,
-                "count": len(result.data)
+                "classes": active_classes,
+                "count": len(active_classes),
+                "current_time_ecuador": now_ecuador.isoformat()
             }
         )
         
@@ -270,16 +383,15 @@ async def get_active_classes():
     "/{class_id}/end",
     response_model=BaseResponse,
     summary="End a class session",
-    description="Mark a class session as ended by setting the end_time"
+    description="Mark a class session as ended by setting the end_time to current Ecuador time"
 )
 async def end_class(class_id: str):
     """
-    End an active class session
+    End an active class session by updating end_time to current time
     
     - **class_id**: The unique identifier of the class to end
     """
     try:
-        from datetime import datetime
         supabase = get_supabase()
         
         # Check if class exists
@@ -291,13 +403,30 @@ async def end_class(class_id: str):
                 detail=f"Class with ID '{class_id}' not found"
             )
         
-        # Update end_time
+        class_data = existing.data[0]
+        
+        # Obtener hora actual en Ecuador
+        now_ecuador = get_ecuador_time()
+        
+        # Verificar si la clase ya terminó según su end_time original
+        original_end_time = datetime.fromisoformat(class_data['end_time'].replace('Z', '+00:00'))
+        original_end_time_ecuador = to_ecuador_time(original_end_time)
+        
+        if now_ecuador >= original_end_time_ecuador:
+            return BaseResponse(
+                success=True,
+                message=f"Class session '{class_id}' was already ended",
+                data=class_data
+            )
+        
+        # Actualizar end_time a la hora actual de Ecuador
+        # Esto hará que la clase se marque como finalizada inmediatamente
         result = supabase.table("class_sessions")\
-            .update({"end_time": datetime.utcnow().isoformat()})\
+            .update({"end_time": now_ecuador.isoformat()})\
             .eq("class_id", class_id)\
             .execute()
         
-        logger.info(f"Class session ended: {class_id}")
+        logger.info(f"Class session manually ended at {now_ecuador.isoformat()}: {class_id}")
         
         return BaseResponse(
             success=True,
@@ -309,6 +438,10 @@ async def end_class(class_id: str):
         raise
     except Exception as e:
         logger.error(f"Error ending class: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error ending class: {str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error ending class: {str(e)}"
@@ -358,19 +491,21 @@ async def get_class(class_id: str):
     "",
     response_model=BaseResponse,
     summary="List all class sessions",
-    description="Get list of all class sessions with optional filtering"
+    description="Get list of all class sessions with optional filtering and status classification"
 )
 async def list_classes(
     limit: int = 50,
     offset: int = 0,
-    instructor: Optional[str] = None
+    instructor: Optional[str] = None,
+    status_filter: Optional[str] = None  # "active", "finished", or None for all
 ):
     """
-    List all class sessions
+    List all class sessions with dynamic status based on Ecuador time
     
     - **limit**: Maximum number of results (default: 50)
     - **offset**: Number of results to skip (default: 0)
     - **instructor**: Filter by instructor name (optional)
+    - **status_filter**: Filter by status - "active" or "finished" (optional)
     """
     try:
         supabase = get_supabase()
@@ -384,14 +519,69 @@ async def list_classes(
         
         result = query.execute()
         
+        # Clasificar clases por estado basándose en la hora actual de Ecuador
+        now_ecuador = get_ecuador_time()
+        active_classes = []
+        finished_classes = []
+        
+        for class_session in result.data:
+            try:
+                start_time = datetime.fromisoformat(class_session['start_time'].replace('Z', '+00:00'))
+                end_time = datetime.fromisoformat(class_session['end_time'].replace('Z', '+00:00'))
+                
+                start_time_ecuador = to_ecuador_time(start_time)
+                end_time_ecuador = to_ecuador_time(end_time)
+                
+                # Log para debugging
+                logger.info(f"📊 Clase {class_session.get('class_name')}:")
+                logger.info(f"  - Inicio: {start_time_ecuador.isoformat()}")
+                logger.info(f"  - Fin: {end_time_ecuador.isoformat()}")
+                logger.info(f"  - Ahora: {now_ecuador.isoformat()}")
+                logger.info(f"  - ¿Activa? {start_time_ecuador <= now_ecuador < end_time_ecuador}")
+                
+                # Extraer course_id y teacher_id del metadata si existen
+                metadata = class_session.get('metadata', {}) or {}
+                if isinstance(metadata, dict):
+                    if 'course_id' in metadata:
+                        class_session['course_id'] = metadata['course_id']
+                    if 'teacher_id' in metadata:
+                        class_session['teacher_id'] = metadata['teacher_id']
+                
+                # Agregar campo de estado dinámico
+                if start_time_ecuador <= now_ecuador < end_time_ecuador:
+                    class_session['is_active'] = True
+                    class_session['status'] = 'active'
+                    active_classes.append(class_session)
+                else:
+                    class_session['is_active'] = False
+                    class_session['status'] = 'finished'
+                    finished_classes.append(class_session)
+            except (ValueError, KeyError) as e:
+                logger.warning(f"Error processing class {class_session.get('id')}: {str(e)}")
+                # Si hay error, asumir que está finalizada
+                class_session['is_active'] = False
+                class_session['status'] = 'finished'
+                finished_classes.append(class_session)
+        
+        # Aplicar filtro de estado si se especific\u00f3
+        if status_filter == "active":
+            filtered_classes = active_classes
+        elif status_filter == "finished":
+            filtered_classes = finished_classes
+        else:
+            filtered_classes = result.data
+        
         return BaseResponse(
             success=True,
-            message=f"Retrieved {len(result.data)} class sessions",
+            message=f"Retrieved {len(filtered_classes)} class sessions",
             data={
-                "classes": result.data,
-                "count": len(result.data),
+                "classes": filtered_classes,
+                "count": len(filtered_classes),
+                "active_count": len(active_classes),
+                "finished_count": len(finished_classes),
                 "limit": limit,
-                "offset": offset
+                "offset": offset,
+                "current_time_ecuador": now_ecuador.isoformat()
             }
         )
         

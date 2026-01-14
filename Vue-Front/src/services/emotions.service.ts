@@ -9,13 +9,21 @@ export const emotionsService = {
   /**
    * Analyze emotions from classroom image
    */
-  async analyzeEmotion(data: EmotionRequest & { student_id?: string }): Promise<EmotionResponse> {
-    const formData = new FormData()
-    formData.append('class_id', data.class_id.toString())
-    formData.append('image', data.image)
+  async analyzeEmotion(data: (EmotionRequest & { student_id?: string }) | FormData): Promise<EmotionResponse> {
+    let formData: FormData
     
-    if (data.student_id) {
-      formData.append('student_id', data.student_id)
+    // Si ya es FormData, usarlo directamente
+    if (data instanceof FormData) {
+      formData = data
+    } else {
+      // Si no, construir el FormData
+      formData = new FormData()
+      formData.append('class_id', data.class_id.toString())
+      formData.append('image', data.image)
+      
+      if (data.student_id) {
+        formData.append('student_id', data.student_id)
+      }
     }
 
     const response = await apiClient.post(

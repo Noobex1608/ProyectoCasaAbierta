@@ -340,6 +340,19 @@
         <h3 class="text-2xl font-bold text-gray-900 mb-6">Nueva Sesión de Clase</h3>
         
         <form @submit.prevent="createSession" class="space-y-4">
+          <!-- Curso (Solo lectura) -->
+          <div class="p-3 bg-[#b81a16]/10 border border-[#b81a16]/30 rounded-lg">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Curso/Materia
+            </label>
+            <p class="font-semibold text-[#b81a16]">
+              {{ course?.course_name }} ({{ course?.course_code }})
+            </p>
+            <p class="text-xs text-gray-500 mt-1">
+              ✅ Los estudiantes de este curso se filtrarán automáticamente en la asistencia
+            </p>
+          </div>
+          
           <!-- Nombre de la sesión -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -423,12 +436,11 @@ import { classesService } from '@/services/classes.service'
 import { enrollmentsService, type EnrolledStudent, type AvailableStudent } from '@/services/enrollments.service'
 import statisticsService from '@/services/statistics.service'
 import { supabase } from '@/services/supabase'
-import type { Course, Student, ClassSession } from '@/types'
+import type { Course, ClassSession } from '@/types'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import StatsCard from '@/components/StatsCard.vue'
 
 const route = useRoute()
-const router = useRouter()
 
 const courseId = route.params.id as string
 
@@ -494,7 +506,7 @@ const loadCourseData = async () => {
 
     // Load sessions of this course only
     // Note: course_id is stored in metadata field
-    const { data: allSessionsData, error: sessionsError } = await supabase
+    const { data: allSessionsData } = await supabase
       .from('class_sessions')
       .select('*')
       .order('created_at', { ascending: false })
@@ -622,22 +634,34 @@ const createSession = async () => {
   try {
     loading.value = true
     
-    // Generar un ID único para la clase basado en la fecha/hora seleccionada
-    const sessionDateTime = new Date(`${sessionForm.date}T${sessionForm.startTime}`)
-    const timestamp = sessionDateTime.getTime()
-    const classId = `${course.value.course_code}-${timestamp}`
-    
-    // Crear la sesión usando el servicio de clases
-    const response = await classesService.createClass({
-      class_id: classId,
+    // Log para debugging
+    console.log('📦 Creando sesión con datos:', {
       class_name: sessionForm.name.trim(),
-      course_id: courseId.toString(),
-      start_time: sessionDateTime.toISOString(),
+      session_date: sessionForm.date,
+      start_time: sessionForm.startTime,
+      end_time: sessionForm.endTime || '',
+      course_id: courseId,
+      course_info: {
+        id: course.value.id,
+        name: course.value.course_name,
+        code: course.value.course_code
+      }
+    })
+    
+    // Crear la sesión usando el servicio de clases con formato simple
+    const response = await classesService.createClass({
+      class_name: sessionForm.name.trim(),
+      session_date: sessionForm.date,
+      start_time: sessionForm.startTime,
+      end_time: sessionForm.endTime || '',
       instructor: undefined,
-      room: undefined
+      room: undefined,
+      course_id: courseId // Ya es string del route.params
     })
 
-    if (response.success) {
+    console.log('✅ Respuesta del backend:', response)
+
+    if (response.success || response.class_id) {
       ElNotification({
         title: 'Éxito',
         message: `Sesión "${sessionForm.name}" creada exitosamente`,
@@ -687,8 +711,8 @@ const formatDateTime = (dateString: string) => {
 const openCreateSessionModal = () => {
   const now = new Date()
   const tzOffset = now.getTimezoneOffset() * 60000
-  const localDate = new Date(now - tzOffset).toISOString().slice(0, 10)
-  const localTime = new Date(now - tzOffset).toISOString().slice(11, 16)
+  const localDate = new Date(now.getTime() - tzOffset).toISOString().slice(0, 10)
+  const localTime = new Date(now.getTime() - tzOffset).toISOString().slice(11, 16)
   
   sessionForm.name = ''
   sessionForm.date = localDate
