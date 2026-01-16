@@ -7,9 +7,48 @@ from typing import List, Optional
 from app.core.schemas import BaseResponse, AttendanceVerifyRequest, BatchAttendanceRequest
 from app.services.attendance_service import AttendanceService
 from app.core.logger import logger
-
+from app.core.config import get_settings
+import httpx
+import asyncio
+from app.db.supabase_client import get_supabase
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 attendance_service = AttendanceService()
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+async def enviar_notificacion_asistencia():
+    """Llama a la Edge Function para enviar notificaciones de nuevas asistencias (fire-and-forget)"""
+    try:
+        settings = get_settings()
+        url = f"{settings.SUPABASE_URL}/functions/v1/student-notifications"
+        
+        logger.info(f"🔔 Llamando Edge Function (asíncrono): {url}")
+        
+        # Fire-and-forget: no esperamos respuesta para evitar timeouts
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Usamos asyncio.create_task para ejecutar sin bloquear
+            try:
+                response = await client.post(
+                    url,
+                    params={"accion": "nuevas_asistencias"},
+                    headers={"Authorization": f"Bearer {settings.SUPABASE_KEY}"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    logger.info(f"✅ Notificaciones procesadas: {data.get('notificaciones_enviadas', 0)} enviadas, {data.get('errores', 0)} errores")
+                else:
+                    logger.warning(f"⚠️ Edge Function respondió con código {response.status_code}: {response.text}")
+            except httpx.ReadTimeout:
+                logger.info(f"⏱️ Edge Function está procesando (timeout esperado con muchas notificaciones)")
+            except httpx.RequestError as e:
+                logger.warning(f"⚠️ Error de conexión con Edge Function: {str(e)}")
+                
+    except Exception as e:
+        logger.error(f"❌ Error iniciando notificación: {str(e)}")
 
 
 @router.post(
@@ -45,6 +84,9 @@ async def verify_attendance(
                 message=result["message"],
                 data=result
             )
+        
+        # Llamar Edge Function para enviar notificación (sin esperar)
+        asyncio.create_task(enviar_notificacion_asistencia())
         
         return BaseResponse(
             success=True,

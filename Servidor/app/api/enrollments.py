@@ -9,8 +9,45 @@ from pydantic import BaseModel, Field
 from app.core.schemas import BaseResponse
 from app.db.supabase_client import get_supabase
 from app.core.logger import logger
-
+from app.core.config import get_settings
+import httpx
+import asyncio
 router = APIRouter(prefix="/enrollments", tags=["Enrollments"])
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+async def enviar_notificacion_inscripcion():
+    """Llama a la Edge Function para enviar notificaciones de nuevas inscripciones (fire-and-forget)"""
+    try:
+        settings = get_settings()
+        url = f"{settings.SUPABASE_URL}/functions/v1/student-notifications"
+        
+        logger.info(f"🔔 Llamando Edge Function (asíncrono): {url}")
+        
+        # Fire-and-forget: no esperamos respuesta para evitar timeouts
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                response = await client.post(
+                    url,
+                    params={"accion": "nuevas_inscripciones"},
+                    headers={"Authorization": f"Bearer {settings.SUPABASE_KEY}"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    logger.info(f"✅ Notificaciones procesadas: {data.get('notificaciones_enviadas', 0)} enviadas, {data.get('errores', 0)} errores")
+                else:
+                    logger.warning(f"⚠️ Edge Function respondió con código {response.status_code}: {response.text}")
+            except httpx.ReadTimeout:
+                logger.info(f"⏱️ Edge Function está procesando (timeout esperado con muchas notificaciones)")
+            except httpx.RequestError as e:
+                logger.warning(f"⚠️ Error de conexión con Edge Function: {str(e)}")
+                
+    except Exception as e:
+        logger.error(f"❌ Error iniciando notificación: {str(e)}")
 
 
 # ============================================================================
@@ -96,6 +133,9 @@ async def enroll_student_in_course(request: EnrollStudentRequest):
             )
         
         logger.info(f"✅ Estudiante {request.student_id} inscrito en curso {request.course_id}")
+        
+        # Llamar Edge Function para enviar notificación (sin esperar)
+        asyncio.create_task(enviar_notificacion_inscripcion())
         
         return BaseResponse(
             success=True,
