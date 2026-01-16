@@ -487,12 +487,21 @@ const deleteClass = async () => {
 }
 
 const formatDateTime = (dateString: string) => {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('es-ES', {
+  if (!dateString) return '-'
+  // Asegurar que la fecha tenga información de timezone
+  let normalizedDate = dateString
+  if (!dateString.includes('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+    // Si no tiene timezone, asumir UTC
+    normalizedDate = dateString + 'Z'
+  }
+  const date = new Date(normalizedDate)
+  return new Intl.DateTimeFormat('es-EC', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'America/Guayaquil'
   }).format(date)
 }
 

@@ -12,6 +12,54 @@
         </h1>
       </div>
 
+      <!-- Accesos Rápidos -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <router-link
+          to="/students"
+          class="bg-white rounded-lg border border-gray-200 p-5 hover:border-[#d63031] hover:shadow-md transition-all group"
+        >
+          <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-lg bg-blue-500 flex items-center justify-center text-white text-xl">
+              <FontAwesomeIcon :icon="['fas', 'users']" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-800 group-hover:text-[#d63031]">Gestionar Estudiantes</h3>
+              <p class="text-sm text-gray-500">Registrar y administrar</p>
+            </div>
+          </div>
+        </router-link>
+        
+        <router-link
+          to="/classes"
+          class="bg-white rounded-lg border border-gray-200 p-5 hover:border-[#d63031] hover:shadow-md transition-all group"
+        >
+          <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-lg bg-green-500 flex items-center justify-center text-white text-xl">
+              <FontAwesomeIcon :icon="['fas', 'calendar-days']" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-800 group-hover:text-[#d63031]">Gestionar Clases</h3>
+              <p class="text-sm text-gray-500">Crear y administrar sesiones</p>
+            </div>
+          </div>
+        </router-link>
+
+        <router-link
+          to="/enrollment"
+          class="bg-white rounded-lg border border-gray-200 p-5 hover:border-[#d63031] hover:shadow-md transition-all group"
+        >
+          <div class="flex items-center gap-4">
+            <div class="h-12 w-12 rounded-lg bg-purple-500 flex items-center justify-center text-white text-xl">
+              <FontAwesomeIcon :icon="['fas', 'user-plus']" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-800 group-hover:text-[#d63031]">Registro Rápido</h3>
+              <p class="text-sm text-gray-500">Registrar nuevo estudiante</p>
+            </div>
+          </div>
+        </router-link>
+      </div>
+
       <!-- Mis Materias Section -->
       <div class="bg-white rounded-lg border border-gray-200 mb-6">
         <div class="px-6 py-4 border-b border-gray-200">

@@ -72,53 +72,54 @@
         <p class="text-gray-500">Intenta con otra búsqueda</p>
       </div>
 
-      <!-- Students Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="student in filteredStudents"
-          :key="student.id"
-          class="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-[#d63031] transition-colors"
-        >
-          <!-- Student Photo -->
-          <div class="h-40 bg-[#d63031] flex items-center justify-center">
-            <img
-              v-if="student.photo_url"
-              :src="student.photo_url"
-              :alt="student.name"
-              class="h-full w-full object-cover"
-            />
-            <div v-else class="text-white text-5xl font-bold">
-              {{ getInitials(student.name) }}
-            </div>
-          </div>
-
-          <!-- Student Info -->
-          <div class="p-4">
-            <h3 class="font-semibold text-gray-800 mb-1">{{ student.name || 'Sin nombre' }}</h3>
-            <p class="text-sm text-gray-500 mb-1">Cédula: {{ student.student_id }}</p>
-            <p class="text-sm text-gray-500 mb-3">{{ student.email || 'Sin email' }}</p>
-            
-            <div class="text-xs text-gray-400 mb-4">
-              Registrado: {{ formatDate(student.created_at || student.enrolled_at) }}
-            </div>
-
-            <!-- Actions -->
-            <div class="flex gap-2">
-              <button
-                @click="viewStudentDetails(student)"
-                class="flex-1 px-3 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors text-sm"
-              >
-                Ver Detalles
-              </button>
-              <button
-                @click="confirmDelete(student)"
-                class="px-3 py-2 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors text-sm"
-              >
-                <FontAwesomeIcon :icon="['fas', 'trash']" />
-              </button>
-            </div>
-          </div>
-        </div>
+      <!-- Students List (Simple) -->
+      <div v-else class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cédula</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr
+              v-for="student in filteredStudents"
+              :key="student.id"
+              class="hover:bg-gray-50 transition-colors"
+            >
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="h-8 w-8 rounded-full bg-[#d63031] flex items-center justify-center text-white text-sm font-medium mr-3">
+                    {{ getInitials(student.name) }}
+                  </div>
+                  <span class="font-medium text-gray-900">{{ student.name || 'Sin nombre' }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {{ student.student_id }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {{ student.email || 'Sin email' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <button
+                  @click="viewStudentDetails(student)"
+                  class="text-blue-600 hover:text-blue-800 text-sm mr-3"
+                >
+                  Ver
+                </button>
+                <button
+                  @click="confirmDelete(student)"
+                  class="text-red-600 hover:text-red-800 text-sm"
+                >
+                  <FontAwesomeIcon :icon="['fas', 'trash']" />
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- Student Details Modal -->

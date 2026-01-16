@@ -12,25 +12,65 @@
         icon-color="green"
       />
 
+      <!-- Selector de Clase -->
+      <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div class="flex items-center gap-3">
+            <label class="font-medium text-gray-700">Clase:</label>
+            <select
+              v-model="selectedClassId"
+              @change="onClassChange"
+              class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16] min-w-[250px]"
+            >
+              <option value="">{{ activeClasses.length === 0 ? 'No hay clases disponibles' : 'Seleccionar clase...' }}</option>
+              <option v-for="classItem in activeClasses" :key="classItem.id" :value="classItem.id">
+                {{ classItem.class_name }} {{ getClassStatusLabel(classItem) }}
+              </option>
+            </select>
+          </div>
+          
+          <!-- Tabs de Modo -->
+          <div class="flex bg-gray-100 rounded-lg p-1">
+            <button
+              @click="attendanceMode = 'facial'"
+              :class="[
+                'px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
+                attendanceMode === 'facial' 
+                  ? 'bg-[#b81a16] text-white shadow-md' 
+                  : 'text-gray-600 hover:text-gray-800'
+              ]"
+            >
+              <FontAwesomeIcon :icon="['fas', 'camera']" />
+              Reconocimiento Facial
+            </button>
+            <button
+              @click="attendanceMode = 'qr'"
+              :class="[
+                'px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
+                attendanceMode === 'qr' 
+                  ? 'bg-[#b81a16] text-white shadow-md' 
+                  : 'text-gray-600 hover:text-gray-800'
+              ]"
+            >
+              <FontAwesomeIcon :icon="['fas', 'qrcode']" />
+              Código QR
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Camera Section -->
-        <div class="lg:col-span-2">
+        <!-- Camera Section (Modo Facial) -->
+        <div v-if="attendanceMode === 'facial'" class="lg:col-span-2">
           <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <FontAwesomeIcon :icon="['fas', 'camera']" class="text-[#b81a16]" />
-                Verificacion Facial Automatica
+                Verificación Facial Automática
               </h2>
-              <select
-                v-model="selectedClassId"
-                @change="onClassChange"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16]"
-              >
-                <option value="">{{ activeClasses.length === 0 ? 'No hay clases disponibles' : 'Seleccionar clase...' }}</option>
-                <option v-for="classItem in activeClasses" :key="classItem.id" :value="classItem.id">
-                  {{ classItem.class_name }} {{ getClassStatusLabel(classItem) }}
-                </option>
-              </select>
+              <span v-if="selectedClassId" class="text-sm text-gray-500">
+                El estudiante se para frente a la cámara
+              </span>
             </div>
 
             <div class="relative bg-gray-900 rounded-lg overflow-hidden mb-4" style="aspect-ratio: 16/9;">
@@ -98,6 +138,88 @@
                   <span class="text-xs">({{ Math.round(detectedEmotion.confidence * 100) }}%)</span>
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Code Section (Modo QR) -->
+        <div v-if="attendanceMode === 'qr'" class="lg:col-span-2">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <FontAwesomeIcon :icon="['fas', 'qrcode']" class="text-[#b81a16]" />
+                Código QR de Asistencia
+              </h2>
+              <button
+                v-if="!qrGenerated"
+                @click="generateQRCode"
+                :disabled="!selectedClassId || generatingQR"
+                class="px-4 py-2 bg-[#b81a16] text-white rounded-lg hover:bg-[#9a1512] transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <FontAwesomeIcon :icon="['fas', 'wand-magic-sparkles']" />
+                {{ generatingQR ? 'Generando...' : 'Generar Código' }}
+              </button>
+              <button
+                v-else
+                @click="regenerateQRCode"
+                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors inline-flex items-center gap-2"
+              >
+                <FontAwesomeIcon :icon="['fas', 'arrows-rotate']" />
+                Regenerar
+              </button>
+            </div>
+
+            <!-- Sin clase seleccionada -->
+            <div v-if="!selectedClassId" class="text-center py-16 text-gray-500">
+              <FontAwesomeIcon :icon="['fas', 'hand-pointer']" class="text-6xl mb-4 text-gray-300" />
+              <p class="text-lg">Selecciona una clase para generar el código QR</p>
+            </div>
+
+            <!-- QR Generado -->
+            <div v-else-if="qrGenerated" class="text-center">
+              <!-- Código Grande -->
+              <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 mb-6 shadow-2xl">
+                <p class="text-gray-400 text-sm font-medium mb-2 uppercase tracking-widest">Código de Asistencia</p>
+                <p class="text-7xl md:text-9xl font-black text-white tracking-[0.2em] font-mono">
+                  {{ currentQRCode }}
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-2 text-gray-400">
+                  <FontAwesomeIcon :icon="['fas', 'clock']" />
+                  <span>Cambia en: <span class="text-yellow-400 font-bold">{{ codeCountdown }}s</span></span>
+                </div>
+              </div>
+
+              <!-- QR Code Image -->
+              <div class="flex flex-col md:flex-row gap-6 items-center justify-center">
+                <div class="bg-white p-4 rounded-xl shadow-lg border-2 border-gray-200">
+                  <img v-if="qrImageUrl" :src="qrImageUrl" alt="QR Code" class="w-48 h-48" />
+                </div>
+                <div class="text-left space-y-2">
+                  <p class="text-gray-700 font-medium">Instrucciones para estudiantes:</p>
+                  <ol class="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                    <li>Escanea el código QR con tu teléfono</li>
+                    <li>Ingresa tu número de cédula</li>
+                    <li>Ingresa el código de 6 dígitos que ves en pantalla</li>
+                    <li>¡Listo! Tu asistencia quedará registrada</li>
+                  </ol>
+                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      @click="copyQRLink"
+                      class="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                    >
+                      <FontAwesomeIcon :icon="['fas', 'copy']" />
+                      Copiar enlace
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Esperando generar -->
+            <div v-else class="text-center py-16 text-gray-500">
+              <FontAwesomeIcon :icon="['fas', 'qrcode']" class="text-6xl mb-4 text-gray-300" />
+              <p class="text-lg">Haz clic en "Generar Código" para comenzar</p>
+              <p class="text-sm mt-2">Los estudiantes podrán registrar su asistencia escaneando el QR</p>
             </div>
           </div>
         </div>
@@ -177,17 +299,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { classesService } from '@/services/classes.service'
 import { attendanceService } from '@/services/attendance.service'
 import { emotionsService } from '@/services/emotions.service'
 import { enrollmentService } from '@/services/enrollment.service'
+import { qrService } from '@/services/qr.service'
 import type { ClassSession, AttendanceRecord, Student } from '@/types'
 import PageHeader from '@/components/PageHeader.vue'
 
 const route = useRoute()
 
+// Modo de asistencia: 'facial' o 'qr'
+const attendanceMode = ref<'facial' | 'qr'>('facial')
+
+// Variables de cámara/facial
 const videoRef = ref<HTMLVideoElement | null>(null)
 const isCameraActive = ref(false)
 const mediaStream = ref<MediaStream | null>(null)
@@ -195,6 +322,16 @@ const verifying = ref(false)
 const lastVerification = ref<any>(null)
 const autoVerificationEnabled = ref(false)
 const verificationIntervalId = ref<number | null>(null)
+
+// Variables de QR
+const qrGenerated = ref(false)
+const generatingQR = ref(false)
+const qrImageUrl = ref('')
+const qrLink = ref('')
+const currentQRCode = ref('')
+const codeCountdown = ref(120)
+const qrToken = ref('')
+const countdownIntervalId = ref<number | null>(null)
 
 const activeClasses = ref<ClassSession[]>([])
 const selectedClassId = ref<number | string>('')
@@ -548,11 +685,138 @@ const getClassStatusLabel = (classItem: any): string => {
   return '(Finalizada)'
 }
 
+// ==================== QR Functions ====================
+
+const generateQRCode = async () => {
+  if (!selectedClassId.value) return
+  
+  generatingQR.value = true
+  try {
+    // Obtener el class_id de la clase seleccionada
+    const selectedClass = activeClasses.value.find(c => c.id === Number(selectedClassId.value))
+    if (!selectedClass) {
+      throw new Error('Clase no encontrada')
+    }
+    
+    const classId = selectedClass.class_id || `CLASS-${selectedClass.id}`
+    
+    const result = await qrService.generateQR({
+      class_id: classId,
+      period_number: 1,
+      base_url: window.location.origin
+    })
+    
+    qrImageUrl.value = result.qr_image
+    qrLink.value = result.attendance_url
+    qrToken.value = result.token
+    currentQRCode.value = result.current_code
+    codeCountdown.value = result.code_remaining_seconds
+    qrGenerated.value = true
+    
+    // Iniciar actualización del código
+    startCodeRefresh()
+    
+  } catch (error: any) {
+    console.error('Error generando QR:', error)
+    alert('Error al generar el código QR: ' + (error.response?.data?.detail || error.message))
+  } finally {
+    generatingQR.value = false
+  }
+}
+
+const regenerateQRCode = () => {
+  stopCodeRefresh()
+  qrGenerated.value = false
+  generateQRCode()
+}
+
+// Variable para el polling de asistencia
+const attendancePollingId = ref<number | null>(null)
+
+// Función para obtener nuevo código del servidor
+const refreshCode = async () => {
+  try {
+    const selectedClass = activeClasses.value.find(c => c.id === Number(selectedClassId.value))
+    if (!selectedClass) return
+    
+    const classId = selectedClass.class_id || `CLASS-${selectedClass.id}`
+    
+    const result = await qrService.generateQR({
+      class_id: classId,
+      period_number: 1,
+      base_url: window.location.origin
+    })
+    
+    currentQRCode.value = result.current_code
+    codeCountdown.value = result.code_remaining_seconds
+  } catch (error) {
+    console.error('Error actualizando código:', error)
+  }
+}
+
+const startCodeRefresh = () => {
+  // Actualizar countdown cada segundo y refrescar código cuando llegue a 0
+  countdownIntervalId.value = window.setInterval(async () => {
+    if (codeCountdown.value > 1) {
+      codeCountdown.value--
+    } else {
+      // Cuando llega a 0, obtener nuevo código automáticamente
+      await refreshCode()
+    }
+  }, 1000)
+  
+  // Actualizar lista de asistencia cada 5 segundos (para ver nuevos registros por QR)
+  attendancePollingId.value = window.setInterval(async () => {
+    if (selectedClassId.value) {
+      await loadAttendanceRecords()
+    }
+  }, 5000)
+}
+
+const stopCodeRefresh = () => {
+  if (countdownIntervalId.value) {
+    clearInterval(countdownIntervalId.value)
+    countdownIntervalId.value = null
+  }
+  if (attendancePollingId.value) {
+    clearInterval(attendancePollingId.value)
+    attendancePollingId.value = null
+  }
+}
+
+const copyQRLink = () => {
+  if (qrLink.value) {
+    navigator.clipboard.writeText(qrLink.value)
+    alert('Enlace copiado al portapapeles')
+  }
+}
+
+// Limpiar QR cuando cambie la clase
+watch(selectedClassId, () => {
+  if (qrGenerated.value) {
+    stopCodeRefresh()
+    qrGenerated.value = false
+    qrImageUrl.value = ''
+    currentQRCode.value = ''
+  }
+})
+
+// Detener cámara cuando cambie a modo QR
+watch(attendanceMode, (newMode) => {
+  if (newMode === 'qr' && isCameraActive.value) {
+    stopCamera()
+  }
+  if (newMode === 'facial' && qrGenerated.value) {
+    stopCodeRefresh()
+  }
+})
+
 onMounted(async () => {
   await loadActiveClasses()
 })
 
 onUnmounted(() => {
   stopCamera()
+  stopCodeRefresh()
 })
 </script>

@@ -28,6 +28,54 @@ def to_ecuador_time(dt: datetime):
     return dt.astimezone(ECUADOR_TZ)
 
 
+def parse_datetime(dt_string: str) -> Optional[datetime]:
+    """
+    Parse datetime string with various formats
+    Handles ISO format with variable microsecond precision
+    """
+    if not dt_string:
+        return None
+    
+    try:
+        # Replace Z with +00:00 for ISO format
+        dt_string = dt_string.replace('Z', '+00:00')
+        
+        # Try standard ISO format first
+        try:
+            return datetime.fromisoformat(dt_string)
+        except ValueError:
+            pass
+        
+        # Handle truncated microseconds (e.g., .02337 instead of .023370)
+        # Find the decimal point and pad microseconds to 6 digits
+        if '.' in dt_string:
+            parts = dt_string.split('.')
+            if len(parts) == 2:
+                # Split timezone if present
+                micro_and_tz = parts[1]
+                if '+' in micro_and_tz:
+                    micro, tz = micro_and_tz.split('+', 1)
+                    micro = micro.ljust(6, '0')[:6]
+                    dt_string = f"{parts[0]}.{micro}+{tz}"
+                elif '-' in micro_and_tz and micro_and_tz.count('-') == 1:
+                    micro, tz = micro_and_tz.rsplit('-', 1)
+                    micro = micro.ljust(6, '0')[:6]
+                    dt_string = f"{parts[0]}.{micro}-{tz}"
+                else:
+                    micro = micro_and_tz.ljust(6, '0')[:6]
+                    dt_string = f"{parts[0]}.{micro}"
+        
+        return datetime.fromisoformat(dt_string)
+        
+    except Exception:
+        # Last resort: use dateutil parser
+        try:
+            from dateutil import parser
+            return parser.parse(dt_string)
+        except Exception:
+            return None
+
+
 # ============================================================================
 # SCHEMAS
 # ============================================================================
@@ -340,26 +388,33 @@ async def get_active_classes():
         active_classes = []
         
         for class_session in result.data:
-            start_time = datetime.fromisoformat(class_session['start_time'].replace('Z', '+00:00'))
-            end_time = datetime.fromisoformat(class_session['end_time'].replace('Z', '+00:00'))
-            
-            # Convertir a hora de Ecuador
-            start_time_ecuador = to_ecuador_time(start_time)
-            end_time_ecuador = to_ecuador_time(end_time)
-            
-            # Extraer course_id y teacher_id del metadata si existen
-            metadata = class_session.get('metadata', {}) or {}
-            if isinstance(metadata, dict):
-                if 'course_id' in metadata:
-                    class_session['course_id'] = metadata['course_id']
-                if 'teacher_id' in metadata:
-                    class_session['teacher_id'] = metadata['teacher_id']
-            
-            # Una clase está activa si:
-            # 1. Ya comenzó (start_time <= now)
-            # 2. Aún no ha terminado (now < end_time)
-            if start_time_ecuador <= now_ecuador < end_time_ecuador:
-                active_classes.append(class_session)
+            try:
+                start_time = parse_datetime(class_session['start_time'])
+                end_time = parse_datetime(class_session['end_time'])
+                
+                if start_time is None or end_time is None:
+                    continue
+                
+                # Convertir a hora de Ecuador
+                start_time_ecuador = to_ecuador_time(start_time)
+                end_time_ecuador = to_ecuador_time(end_time)
+                
+                # Extraer course_id y teacher_id del metadata si existen
+                metadata = class_session.get('metadata', {}) or {}
+                if isinstance(metadata, dict):
+                    if 'course_id' in metadata:
+                        class_session['course_id'] = metadata['course_id']
+                    if 'teacher_id' in metadata:
+                        class_session['teacher_id'] = metadata['teacher_id']
+                
+                # Una clase está activa si:
+                # 1. Ya comenzó (start_time <= now)
+                # 2. Aún no ha terminado (now < end_time)
+                if start_time_ecuador <= now_ecuador < end_time_ecuador:
+                    active_classes.append(class_session)
+            except Exception:
+                # Skip invalid sessions
+                continue
         
         return BaseResponse(
             success=True,
@@ -409,7 +464,12 @@ async def end_class(class_id: str):
         now_ecuador = get_ecuador_time()
         
         # Verificar si la clase ya terminó según su end_time original
-        original_end_time = datetime.fromisoformat(class_data['end_time'].replace('Z', '+00:00'))
+        original_end_time = parse_datetime(class_data['end_time'])
+        if original_end_time is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid end_time format in class data"
+            )
         original_end_time_ecuador = to_ecuador_time(original_end_time)
         
         if now_ecuador >= original_end_time_ecuador:
@@ -419,14 +479,17 @@ async def end_class(class_id: str):
                 data=class_data
             )
         
-        # Actualizar end_time a la hora actual de Ecuador
+        # Convertir hora actual de Ecuador a UTC antes de guardar (consistente con create_class)
+        now_utc = now_ecuador.astimezone(pytz.utc)
+        
+        # Actualizar end_time a la hora actual en UTC
         # Esto hará que la clase se marque como finalizada inmediatamente
         result = supabase.table("class_sessions")\
-            .update({"end_time": now_ecuador.isoformat()})\
+            .update({"end_time": now_utc.isoformat()})\
             .eq("class_id", class_id)\
             .execute()
         
-        logger.info(f"Class session manually ended at {now_ecuador.isoformat()}: {class_id}")
+        logger.info(f"Class session manually ended at {now_ecuador.isoformat()} (UTC: {now_utc.isoformat()}): {class_id}")
         
         return BaseResponse(
             success=True,
@@ -526,18 +589,17 @@ async def list_classes(
         
         for class_session in result.data:
             try:
-                start_time = datetime.fromisoformat(class_session['start_time'].replace('Z', '+00:00'))
-                end_time = datetime.fromisoformat(class_session['end_time'].replace('Z', '+00:00'))
+                start_time = parse_datetime(class_session['start_time'])
+                end_time = parse_datetime(class_session['end_time'])
+                
+                if start_time is None or end_time is None:
+                    class_session['is_active'] = False
+                    class_session['status'] = 'finished'
+                    finished_classes.append(class_session)
+                    continue
                 
                 start_time_ecuador = to_ecuador_time(start_time)
                 end_time_ecuador = to_ecuador_time(end_time)
-                
-                # Log para debugging
-                logger.info(f"📊 Clase {class_session.get('class_name')}:")
-                logger.info(f"  - Inicio: {start_time_ecuador.isoformat()}")
-                logger.info(f"  - Fin: {end_time_ecuador.isoformat()}")
-                logger.info(f"  - Ahora: {now_ecuador.isoformat()}")
-                logger.info(f"  - ¿Activa? {start_time_ecuador <= now_ecuador < end_time_ecuador}")
                 
                 # Extraer course_id y teacher_id del metadata si existen
                 metadata = class_session.get('metadata', {}) or {}
@@ -556,8 +618,7 @@ async def list_classes(
                     class_session['is_active'] = False
                     class_session['status'] = 'finished'
                     finished_classes.append(class_session)
-            except (ValueError, KeyError) as e:
-                logger.warning(f"Error processing class {class_session.get('id')}: {str(e)}")
+            except Exception:
                 # Si hay error, asumir que está finalizada
                 class_session['is_active'] = False
                 class_session['status'] = 'finished'

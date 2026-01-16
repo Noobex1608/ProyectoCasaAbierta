@@ -116,6 +116,19 @@
               <p class="text-xs text-gray-500">Estado emocional</p>
             </div>
           </button>
+
+          <button
+            @click="openQRModal"
+            class="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all duration-200"
+          >
+            <span class="text-2xl mr-3 text-blue-600">
+              <FontAwesomeIcon :icon="['fas', 'qrcode']" />
+            </span>
+            <div class="text-left">
+              <p class="font-medium text-gray-800">Generar QR</p>
+              <p class="text-xs text-gray-500">Asistencia por código</p>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -424,16 +437,177 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal: Generar QR -->
+    <div
+      v-if="showQRModal"
+      class="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50"
+      @click.self="showQRModal = false"
+    >
+      <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <FontAwesomeIcon :icon="['fas', 'qrcode']" class="text-blue-600" />
+            Asistencia por QR
+          </h3>
+          <button @click="showQRModal = false" class="text-gray-400 hover:text-gray-600">
+            <FontAwesomeIcon :icon="['fas', 'xmark']" />
+          </button>
+        </div>
+
+        <!-- Seleccionar Sesión Activa -->
+        <div v-if="!selectedSessionForQR" class="space-y-4">
+          <p class="text-gray-600 text-sm">Selecciona una sesión activa para generar el código QR:</p>
+          
+          <div v-if="allActiveSessions.length === 0" class="text-center py-8 text-gray-500">
+            <div class="text-5xl mb-4 text-gray-300">
+              <FontAwesomeIcon :icon="['fas', 'calendar-xmark']" />
+            </div>
+            <p class="text-lg mb-2">No hay sesiones activas</p>
+            <p class="text-sm">Crea una sesión de clase primero</p>
+            <button
+              @click="showQRModal = false; openCreateSessionModal()"
+              class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Crear Sesión
+            </button>
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="session in allActiveSessions"
+              :key="session.class_id"
+              @click="selectSessionForQR(session)"
+              class="p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all"
+            >
+              <p class="font-semibold text-gray-900">{{ session.class_name }}</p>
+              <p class="text-sm text-gray-600">{{ formatDateTime(session.start_time) }} - {{ formatTime(session.end_time) }}</p>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                  Activa
+                </span>
+                <span class="text-xs text-gray-500">
+                  {{ calculateDuration(session.start_time, session.end_time) }} horas
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Generado -->
+        <div v-else class="space-y-4">
+          <!-- Info de la sesión -->
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="font-semibold text-blue-800">{{ selectedSessionForQR.class_name }}</p>
+            <p class="text-sm text-blue-600">{{ formatDateTime(selectedSessionForQR.start_time) }}</p>
+          </div>
+
+          <!-- Selector de Período -->
+          <div v-if="classPeriods.length > 1" class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700">
+              Selecciona el Período/Hora:
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                v-for="period in classPeriods"
+                :key="period.period_number"
+                @click="selectedPeriod = period.period_number"
+                :class="[
+                  'p-3 border rounded-lg text-left transition-all',
+                  selectedPeriod === period.period_number
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                ]"
+              >
+                <p class="font-medium">Período {{ period.period_number }}</p>
+                <p class="text-xs text-gray-500">
+                  {{ formatTime(period.start_time) }} - {{ formatTime(period.end_time) }}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <!-- Botón Generar -->
+          <button
+            @click="generateQR"
+            :disabled="generatingQR"
+            class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+          >
+            {{ generatingQR ? 'Generando...' : 'Generar Código QR' }}
+          </button>
+
+          <!-- QR Code Display -->
+          <div v-if="qrData" class="space-y-4">
+            <!-- CÓDIGO ROTATIVO PROMINENTE -->
+            <div class="p-6 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl text-white text-center">
+              <p class="text-sm opacity-80 mb-2">CÓDIGO DE ASISTENCIA</p>
+              <p class="text-5xl font-mono font-bold tracking-widest mb-3">
+                {{ currentCode || qrData.current_code }}
+              </p>
+              <div class="flex items-center justify-center gap-2 text-sm">
+                <span class="animate-pulse">⏱️</span>
+                <span>Cambia en {{ codeRemainingSeconds }}s</span>
+              </div>
+              <p class="text-xs opacity-70 mt-2">
+                Proyecta esta pantalla para que los estudiantes vean el código
+              </p>
+            </div>
+
+            <!-- QR Code (opcional) -->
+            <details class="border border-gray-200 rounded-lg">
+              <summary class="p-3 cursor-pointer text-sm text-gray-600 hover:bg-gray-50">
+                📱 Mostrar código QR (opcional)
+              </summary>
+              <div class="p-4 text-center border-t">
+                <img :src="qrData.qr_image" alt="QR Code" class="w-48 h-48 mx-auto" />
+                <p class="text-xs text-gray-500 mt-2">
+                  Los estudiantes también pueden escanear este QR
+                </p>
+              </div>
+            </details>
+
+            <div class="text-center space-y-2">
+              <p class="text-xs text-gray-500">
+                Válido hasta: {{ formatDateTime(qrData.expires_at) }} • Período {{ qrData.period_number }}
+              </p>
+            </div>
+            
+            <div class="flex gap-2">
+              <button
+                @click="copyQRLink"
+                class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                📋 Copiar Enlace
+              </button>
+              <button
+                @click="downloadQR"
+                class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 text-sm"
+              >
+                ⬇️ Descargar QR
+              </button>
+            </div>
+          </div>
+
+          <button
+            @click="selectedSessionForQR = null; qrData = null"
+            class="w-full px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            ← Volver a seleccionar sesión
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElNotification } from 'element-plus'
 import { coursesService } from '@/services/courses.service'
 import { classesService } from '@/services/classes.service'
 import { enrollmentsService, type EnrolledStudent, type AvailableStudent } from '@/services/enrollments.service'
+import { qrService, type ClassPeriod, type QRGenerateResponse } from '@/services/qr.service'
 import statisticsService from '@/services/statistics.service'
 import { supabase } from '@/services/supabase'
 import type { Course, ClassSession } from '@/types'
@@ -479,6 +653,28 @@ const sessionForm = reactive({
   date: '',
   startTime: '',
   endTime: ''
+})
+
+// QR Modal
+const showQRModal = ref(false)
+const selectedSessionForQR = ref<ClassSession | null>(null)
+const classPeriods = ref<ClassPeriod[]>([])
+const selectedPeriod = ref(1)
+const generatingQR = ref(false)
+const qrData = ref<QRGenerateResponse | null>(null)
+const allActiveSessions = ref<ClassSession[]>([])
+const currentCode = ref('')
+const codeRemainingSeconds = ref(0)
+let codeRefreshInterval: ReturnType<typeof setInterval> | null = null
+
+// Sesiones activas del curso actual
+const activeSessions = computed(() => {
+  const now = new Date()
+  return sessions.value.filter(session => {
+    const startTime = new Date(session.start_time)
+    const endTime = new Date(session.end_time)
+    return startTime <= now && now < endTime
+  })
 })
 
 const stats = ref({
@@ -634,20 +830,6 @@ const createSession = async () => {
   try {
     loading.value = true
     
-    // Log para debugging
-    console.log('📦 Creando sesión con datos:', {
-      class_name: sessionForm.name.trim(),
-      session_date: sessionForm.date,
-      start_time: sessionForm.startTime,
-      end_time: sessionForm.endTime || '',
-      course_id: courseId,
-      course_info: {
-        id: course.value.id,
-        name: course.value.course_name,
-        code: course.value.course_code
-      }
-    })
-    
     // Crear la sesión usando el servicio de clases con formato simple
     const response = await classesService.createClass({
       class_name: sessionForm.name.trim(),
@@ -656,10 +838,8 @@ const createSession = async () => {
       end_time: sessionForm.endTime || '',
       instructor: undefined,
       room: undefined,
-      course_id: courseId // Ya es string del route.params
+      course_id: courseId
     })
-
-    console.log('✅ Respuesta del backend:', response)
 
     if (response.success || response.class_id) {
       ElNotification({
@@ -700,11 +880,12 @@ const getInitials = (name: string) => {
 
 const formatDateTime = (dateString: string) => {
   const date = new Date(dateString)
-  return new Intl.DateTimeFormat('es-ES', {
+  return new Intl.DateTimeFormat('es-EC', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/Guayaquil'
   }).format(date)
 }
 
@@ -721,7 +902,158 @@ const openCreateSessionModal = () => {
   showCreateSessionModal.value = true
 }
 
+// === QR Functions ===
+const openQRModal = async () => {
+  selectedSessionForQR.value = null
+  classPeriods.value = []
+  selectedPeriod.value = 1
+  qrData.value = null
+  
+  // Cargar TODAS las sesiones activas (no solo las del curso)
+  try {
+    const response = await classesService.getActiveClasses()
+    allActiveSessions.value = response || []
+  } catch {
+    allActiveSessions.value = []
+  }
+  
+  showQRModal.value = true
+}
+
+const selectSessionForQR = async (session: ClassSession) => {
+  selectedSessionForQR.value = session
+  selectedPeriod.value = 1
+  qrData.value = null
+  
+  // Load periods for this session
+  try {
+    const periodsData = await qrService.getClassPeriods(session.class_id)
+    classPeriods.value = periodsData.periods
+    
+    // Set current period if available
+    if (periodsData.current_period) {
+      selectedPeriod.value = periodsData.current_period.period_number
+    }
+  } catch {
+    // Default to single period
+    classPeriods.value = [{
+      period_number: 1,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      late_threshold: session.start_time,
+      duration_minutes: 60
+    }]
+  }
+}
+
+const generateQR = async () => {
+  if (!selectedSessionForQR.value) return
+  
+  generatingQR.value = true
+  try {
+    const result = await qrService.generateQR({
+      class_id: selectedSessionForQR.value.class_id,
+      period_number: selectedPeriod.value,
+      base_url: window.location.origin
+    })
+    qrData.value = result
+    currentCode.value = result.current_code
+    codeRemainingSeconds.value = result.code_remaining_seconds
+    
+    // Start code refresh timer
+    startCodeRefreshTimer()
+    
+    ElNotification({
+      title: 'QR Generado',
+      message: `Código de asistencia generado: ${result.current_code}`,
+      type: 'success'
+    })
+  } catch (error: any) {
+    ElNotification({
+      title: 'Error',
+      message: error.response?.data?.detail || 'Error al generar QR',
+      type: 'error'
+    })
+  } finally {
+    generatingQR.value = false
+  }
+}
+
+const startCodeRefreshTimer = () => {
+  // Clear existing interval
+  if (codeRefreshInterval) {
+    clearInterval(codeRefreshInterval)
+  }
+  
+  // Update every second
+  codeRefreshInterval = setInterval(async () => {
+    if (codeRemainingSeconds.value > 0) {
+      codeRemainingSeconds.value--
+    } else {
+      // Code expired, fetch new one
+      if (selectedSessionForQR.value) {
+        try {
+          const result = await qrService.generateQR({
+            class_id: selectedSessionForQR.value.class_id,
+            period_number: selectedPeriod.value,
+            base_url: window.location.origin
+          })
+          currentCode.value = result.current_code
+          codeRemainingSeconds.value = result.code_remaining_seconds
+        } catch {
+          // Error refreshing code
+        }
+      }
+    }
+  }, 1000)
+}
+
+const stopCodeRefreshTimer = () => {
+  if (codeRefreshInterval) {
+    clearInterval(codeRefreshInterval)
+    codeRefreshInterval = null
+  }
+}
+
+const copyQRLink = () => {
+  if (!qrData.value?.qr_url) return
+  navigator.clipboard.writeText(qrData.value.qr_url)
+  ElNotification({
+    title: 'Copiado',
+    message: 'Enlace copiado al portapapeles',
+    type: 'success'
+  })
+}
+
+const downloadQR = () => {
+  if (!qrData.value?.qr_image) return
+  
+  const link = document.createElement('a')
+  link.download = `qr-asistencia-${selectedSessionForQR.value?.class_name || 'clase'}-periodo-${selectedPeriod.value}.png`
+  link.href = qrData.value.qr_image
+  link.click()
+}
+
+const formatTime = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('es-EC', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZone: 'America/Guayaquil'
+  })
+}
+
+const calculateDuration = (startTime: string, endTime: string) => {
+  const start = new Date(startTime)
+  const end = new Date(endTime)
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60))
+}
+
 onMounted(() => {
   loadCourseData()
+})
+
+onUnmounted(() => {
+  stopCodeRefreshTimer()
 })
 </script>

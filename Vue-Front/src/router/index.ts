@@ -20,6 +20,18 @@ const routes = [
     }
   },
   // =====================
+  // RUTA PÚBLICA - Verificación QR
+  // =====================
+  {
+    path: '/verificar-asistencia',
+    name: 'PublicAttendance',
+    component: () => import('@/views/PublicAttendance.vue'),
+    meta: { 
+      requiresAuth: false,
+      title: 'Verificar Asistencia'
+    }
+  },
+  // =====================
   // RUTAS DE ADMINISTRADOR
   // =====================
   {
