@@ -27,9 +27,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
+# Upgrade pip first
+RUN pip install --upgrade pip
+
 # Copy and install requirements (sin TensorFlow, ya viene en la imagen base)
+# --ignore-installed: Ignora paquetes del sistema que causan conflictos (ej: blinker)
 COPY requirements.docker.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --ignore-installed -r requirements.txt
 
 # Copy application code
 COPY ./app ./app
