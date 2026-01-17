@@ -8,7 +8,7 @@
       <!-- Welcome Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-800">
-          ¡Hola, {{ userName }}! 👋
+          ¡Hola, {{ userName }}! 
         </h1>
       </div>
 
@@ -148,6 +148,13 @@
                         class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
                       >
                         {{ getDayName(sched.day_of_week) }} {{ sched.start_time }}-{{ sched.end_time }}
+                      </span>
+                    </div>
+                    <!-- Indicador de Google Calendar -->
+                    <div v-if="course.schedule && course.schedule.length > 0" class="mt-2">
+                      <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded inline-flex items-center gap-1">
+                        <FontAwesomeIcon :icon="['fas', 'calendar']" />
+                        Horarios configurados
                       </span>
                     </div>
                   </div>
@@ -328,9 +335,67 @@
                 </div>
               </div>
 
-              <p class="text-xs text-gray-500 mt-2">
-                💡 Los horarios se repetirán cada semana durante 3 meses en Google Calendar
-              </p>
+              <!-- Opción de sincronización con Google Calendar -->
+              <div v-if="newCourse.schedule.length > 0" class="mt-4 border-t border-gray-200 pt-4">
+                <div class="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="sync-google-calendar"
+                    v-model="syncWithGoogleCalendar"
+                    :disabled="!googleCalendarReady"
+                    class="mt-1 h-4 w-4 text-[#d63031] focus:ring-[#d63031] border-gray-300 rounded"
+                  />
+                  <div class="flex-1">
+                    <label for="sync-google-calendar" class="text-sm font-medium text-gray-700 cursor-pointer">
+                      Sincronizar con Google Calendar
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1">
+                      {{ googleCalendarReady ? (isEditMode ? 'Se actualizarán los eventos en tu calendario' : 'Los horarios se repetirán cada semana durante 3 meses') : 'Requiere configuración de Google Calendar' }}
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- Advertencia para edición -->
+                <div v-if="isEditMode && syncWithGoogleCalendar" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div class="flex items-start gap-2">
+                    <FontAwesomeIcon :icon="['fas', 'info-circle']" class="text-blue-600 mt-0.5" />
+                    <div class="flex-1">
+                      <p class="text-sm font-medium text-blue-800">Actualización de calendario</p>
+                      <p class="text-xs text-blue-700 mt-1">
+                        Los eventos antiguos se eliminarán automáticamente y se crearán nuevos con los horarios actualizados.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Estado de Google Calendar -->
+              <div v-if="googleCalendarReady" class="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <div class="flex items-center gap-2 text-sm text-emerald-800">
+                  <FontAwesomeIcon :icon="['fas', 'calendar-check']" class="text-emerald-600" />
+                  <span class="font-medium">Google Calendar conectado</span>
+                </div>
+                <p class="text-xs text-emerald-700 mt-1">
+                  Marca la casilla arriba para sincronizar automáticamente al crear la materia
+                </p>
+              </div>
+              
+              <div v-else-if="initializingCalendar" class="mt-3 p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                <div class="flex items-center gap-2 text-sm text-sky-800">
+                  <FontAwesomeIcon :icon="['fas', 'spinner']" class="text-sky-600 animate-spin" />
+                  <span class="font-medium">Inicializando Google Calendar...</span>
+                </div>
+              </div>
+              
+              <div v-else class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div class="flex items-center gap-2 text-sm text-amber-800">
+                  <FontAwesomeIcon :icon="['fas', 'info-circle']" class="text-amber-600" />
+                  <span class="font-medium">Google Calendar no disponible</span>
+                </div>
+                <p class="text-xs text-amber-700 mt-1">
+                  Configura las credenciales de Google Calendar en el archivo .env para habilitar la sincronización
+                </p>
+              </div>
             </div>
           </div>
 
@@ -380,8 +445,21 @@
           <p class="text-sm text-gray-500">
             Esta acción no se puede deshacer. Se eliminarán todos los datos asociados a esta materia.
           </p>
+          
+          <!-- Advertencia de Google Calendar -->
+          <div v-if="courseToDelete?.schedule && courseToDelete.schedule.length > 0 && googleCalendarReady" class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <FontAwesomeIcon :icon="['fas', 'calendar-xmark']" class="text-amber-600 mt-0.5" />
+              <div class="flex-1">
+                <p class="text-sm font-medium text-amber-800">Eventos de Google Calendar</p>
+                <p class="text-xs text-amber-700 mt-1">
+                  También se intentará eliminar los eventos de esta materia en tu Google Calendar si existen.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-
+        
         <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
           <button
             type="button"
@@ -428,6 +506,9 @@ const editingCourseId = ref<string | null>(null)
 const showDeleteConfirm = ref(false)
 const courseToDelete = ref<Course | null>(null)
 const deleting = ref(false)
+const googleCalendarReady = ref(false)
+const initializingCalendar = ref(false)
+const syncWithGoogleCalendar = ref(false)
 
 const courses = ref<Course[]>([])
 
@@ -448,8 +529,17 @@ const newCourse = reactive<{
   schedule: []
 })
 
-// Generar colores para las materias
-const courseColors = ['#d63031', '#0984e3', '#6c5ce7', '#00b894', '#fdcb6e', '#e17055']
+// Generar colores para las materias - Paleta que combina con el tema principal (#d63031)
+const courseColors = [
+  '#d63031', // Rojo principal
+  '#0984e3', // Azul brillante
+  '#6c5ce7', // Púrpura
+  '#00b894', // Verde esmeralda
+  '#e17055', // Coral
+  '#fd79a8', // Rosa
+  '#fdcb6e', // Amarillo dorado
+  '#74b9ff'  // Azul cielo
+]
 
 // Horarios para el calendario semanal
 const weeklySchedules = computed(() => {
@@ -473,6 +563,30 @@ const weeklySchedules = computed(() => {
   })
   return schedules
 })
+
+const initializeGoogleCalendar = async () => {
+  if (initializingCalendar.value || googleCalendarReady.value) return
+  
+  initializingCalendar.value = true
+  try {
+    // Verificar si tiene credenciales configuradas
+    if (!googleCalendarService.hasCredentials()) {
+      console.warn('Google Calendar no configurado. Configura VITE_GOOGLE_API_KEY y VITE_GOOGLE_CLIENT_ID en .env')
+      return
+    }
+    
+    // Inicializar Google Calendar API
+    await googleCalendarService.initialize()
+    await googleCalendarService.initializeAuthClient()
+    googleCalendarReady.value = true
+    console.log('✅ Google Calendar inicializado correctamente')
+  } catch (error) {
+    console.error('Error al inicializar Google Calendar:', error)
+    googleCalendarReady.value = false
+  } finally {
+    initializingCalendar.value = false
+  }
+}
 
 const loadDashboardData = async () => {
   loading.value = true
@@ -552,6 +666,7 @@ const closeCreateModal = () => {
   newCourse.description = ''
   newCourse.schedule = []
   createError.value = ''
+  syncWithGoogleCalendar.value = false
 }
 
 const editCourse = (course: Course) => {
@@ -561,6 +676,10 @@ const editCourse = (course: Course) => {
   newCourse.course_code = course.course_code
   newCourse.description = course.description || ''
   newCourse.schedule = course.schedule ? [...course.schedule] : []
+  
+  // Por defecto, no marcar sincronización (el usuario puede habilitarla si quiere actualizar)
+  syncWithGoogleCalendar.value = false
+  
   showCreateCourseModal.value = true
 }
 
@@ -574,6 +693,25 @@ const deleteCourse = async () => {
   
   deleting.value = true
   try {
+    // Intentar eliminar eventos de Google Calendar (si existen)
+    if (googleCalendarReady.value) {
+      try {
+        console.log('🗑️ Eliminando eventos de Google Calendar...')
+        
+        // Si no está autenticado, solicitar autorización
+        if (!googleCalendarService.isAuthenticated()) {
+          await googleCalendarService.requestAuthorization()
+        }
+        
+        await googleCalendarService.deleteCourseEvents(courseToDelete.value.course_code)
+        console.log('✅ Eventos eliminados de Google Calendar')
+      } catch (error) {
+        console.error('Error eliminando eventos de Google Calendar:', error)
+        // Continuar con la eliminación de la materia aunque falle la eliminación del calendario
+      }
+    }
+    
+    // Eliminar la materia de la base de datos
     await coursesService.deleteCourse(courseToDelete.value.id)
     await loadDashboardData()
     showDeleteConfirm.value = false
@@ -619,10 +757,45 @@ const createCourse = async () => {
         schedule: newCourse.schedule.length > 0 ? newCourse.schedule : undefined
       })
       
-      successMessage.value = '✅ Materia actualizada correctamente'
+      // Actualizar en Google Calendar si está habilitado
+      let calendarUpdated = false
+      let calendarError = null
+      
+      if (syncWithGoogleCalendar.value && googleCalendarReady.value && newCourse.schedule.length > 0) {
+        try {
+          // Si no está autenticado, solicitar autorización
+          if (!googleCalendarService.isAuthenticated()) {
+            console.log('Solicitando autorización de Google Calendar...')
+            await googleCalendarService.requestAuthorization()
+          }
+          
+          // Actualizar eventos en Google Calendar (elimina antiguos y crea nuevos)
+          console.log('Actualizando eventos en Google Calendar...')
+          await googleCalendarService.updateCourseEvents({
+            course_name: newCourse.course_name,
+            course_code: newCourse.course_code,
+            description: newCourse.description || undefined,
+            schedule: newCourse.schedule
+          })
+          calendarUpdated = true
+          console.log('✅ Eventos actualizados en Google Calendar (antiguos eliminados)')
+        } catch (error: any) {
+          console.error('Error actualizando eventos en calendar:', error)
+          calendarError = error
+        }
+      }
+      
+      // Mensaje de éxito según el resultado
+      if (calendarUpdated) {
+        successMessage.value = `✅ Materia actualizada y sincronizada con Google Calendar`
+      } else if (syncWithGoogleCalendar.value && calendarError) {
+        successMessage.value = '✅ Materia actualizada. Error al sincronizar con Google Calendar.'
+      } else {
+        successMessage.value = '✅ Materia actualizada correctamente'
+      }
     } else {
       // Crear nueva materia
-      await coursesService.createCourse({
+      const createdCourse = await coursesService.createCourse({
         course_name: newCourse.course_name,
         course_code: newCourse.course_code,
         description: newCourse.description || undefined,
@@ -630,26 +803,46 @@ const createCourse = async () => {
       })
 
       let calendarSynced = false
+      let calendarError = null
 
-      // Intentar crear eventos recurrentes en Google Calendar
-      try {
-        if (googleCalendarService.isAuthenticated()) {
+      // Intentar crear eventos recurrentes en Google Calendar solo si el usuario lo desea
+      if (syncWithGoogleCalendar.value && googleCalendarReady.value && newCourse.schedule.length > 0) {
+        try {
+          // Si no está autenticado, solicitar autorización
+          if (!googleCalendarService.isAuthenticated()) {
+            console.log('Solicitando autorización de Google Calendar...')
+            await googleCalendarService.requestAuthorization()
+          }
+          
+          // Crear eventos en Google Calendar
+          console.log('Creando eventos en Google Calendar...')
           await googleCalendarService.createCourseEvent({
             course_name: newCourse.course_name,
             course_code: newCourse.course_code,
             description: newCourse.description || undefined,
-            schedule: newCourse.schedule.length > 0 ? newCourse.schedule : undefined
+            schedule: newCourse.schedule
           })
           calendarSynced = true
+          console.log('✅ Eventos creados en Google Calendar')
+        } catch (error: any) {
+          console.error('Error creating calendar event:', error)
+          calendarError = error
         }
-      } catch (calendarError) {
-        console.error('Error creating calendar event:', calendarError)
       }
 
+      // Mensaje de éxito según el resultado de la sincronización
       if (calendarSynced) {
-        successMessage.value = '✅ Materia creada y sincronizada con Google Calendar'
+        successMessage.value = `✅ Materia creada y sincronizada con Google Calendar (${newCourse.schedule.length} horario${newCourse.schedule.length > 1 ? 's' : ''})`
+      } else if (!syncWithGoogleCalendar.value) {
+        successMessage.value = '✅ Materia creada sin sincronización con Google Calendar.'
+      } else if (!googleCalendarReady.value) {
+        successMessage.value = '✅ Materia creada. Google Calendar no está configurado.'
+      } else if (newCourse.schedule.length === 0) {
+        successMessage.value = '✅ Materia creada sin horarios.'
+      } else if (calendarError) {
+        successMessage.value = '✅ Materia creada. Error al sincronizar con Google Calendar. Verifica tu conexión e intenta sincronizar manualmente.'
       } else {
-        successMessage.value = '✅ Materia creada. Para sincronizar con Google Calendar, conéctate en la sección de Calendario.'
+        successMessage.value = '✅ Materia creada. Para sincronizar con Google Calendar, autoriza el acceso.'
       }
     }
 
@@ -667,7 +860,11 @@ const createCourse = async () => {
   }
 }
 
-onMounted(() => {
-  loadDashboardData()
+onMounted(async () => {
+  // Inicializar Google Calendar en paralelo con la carga de datos
+  await Promise.all([
+    loadDashboardData(),
+    initializeGoogleCalendar()
+  ])
 })
 </script>

@@ -23,7 +23,12 @@
               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#b81a16] min-w-[250px]"
             >
               <option value="">{{ activeClasses.length === 0 ? 'No hay clases disponibles' : 'Seleccionar clase...' }}</option>
-              <option v-for="classItem in activeClasses" :key="classItem.id" :value="classItem.id">
+              <option 
+                v-for="classItem in activeClasses" 
+                :key="classItem.id" 
+                :value="classItem.id"
+                :class="getClassOptionClass(classItem)"
+              >
                 {{ classItem.class_name }} {{ getClassStatusLabel(classItem) }}
               </option>
             </select>
@@ -515,46 +520,53 @@ const onClassChange = async () => {
 
 const loadActiveClasses = async () => {
   try {
-    // Cargar todas las clases con su estado dinámico
+    // Cargar todas las clases
     const allClasses = await classesService.getClasses()
     console.log('📚 Clases cargadas:', allClasses)
     
-    // Filtrar clases activas basándose en el campo is_active o status que envía el backend
-    const activeClassesList = allClasses.filter((c: any) => {
-      // Si el backend envía is_active, usarlo
-      if (c.hasOwnProperty('is_active')) {
-        return c.is_active === true
+    // Ordenar clases por prioridad: En curso > Próximas > Finalizadas
+    const sortedClasses = allClasses.sort((a: any, b: any) => {
+      const statusA = getClassStatus(a)
+      const statusB = getClassStatus(b)
+      
+      const priority: Record<string, number> = {
+        'active': 1,
+        'upcoming': 2,
+        'finished': 3,
+        'unknown': 4
       }
-      // Si el backend envía status, usarlo
-      if (c.hasOwnProperty('status')) {
-        return c.status === 'active'
+      
+      const priorityA = priority[statusA] || 4
+      const priorityB = priority[statusB] || 4
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB
       }
-      // Fallback: verificar manualmente
-      if (!c.end_time || !c.start_time) return false
-      const now = new Date()
-      const startTime = new Date(c.start_time)
-      const endTime = new Date(c.end_time)
-      return startTime <= now && now < endTime
+      
+      // Si tienen la misma prioridad, ordenar por fecha de inicio
+      const startA = new Date(a.start_time || 0).getTime()
+      const startB = new Date(b.start_time || 0).getTime()
+      return startB - startA
     })
     
-    console.log('📊 Clases activas:', activeClassesList.length)
-    
-    // Mostrar clases activas si hay, si no, mostrar todas
-    if (activeClassesList.length > 0) {
-      activeClasses.value = activeClassesList
-    } else {
-      console.log('⚠️ No hay clases activas en este momento, mostrando todas las clases')
-      activeClasses.value = allClasses
-    }
+    activeClasses.value = sortedClasses
     
     console.log('📊 Clases disponibles para asistencia:', activeClasses.value.length)
     
+    // Auto-seleccionar: primero una clase en curso, luego próxima, luego cualquiera
     if (route.query.class_id) {
       selectedClassId.value = Number(route.query.class_id)
       await onClassChange()
-    } else if (activeClasses.value.length > 0 && activeClasses.value[0]) {
-      selectedClassId.value = activeClasses.value[0].id
-      await onClassChange()
+    } else if (activeClasses.value.length > 0) {
+      const activeClass = activeClasses.value.find(c => getClassStatus(c) === 'active')
+      const upcomingClass = activeClasses.value.find(c => getClassStatus(c) === 'upcoming')
+      const firstClass = activeClasses.value[0]
+      
+      const classToSelect = activeClass || upcomingClass || firstClass
+      if (classToSelect) {
+        selectedClassId.value = classToSelect.id
+        await onClassChange()
+      }
     }
   } catch (error) {
     console.error('❌ Error loading classes:', error)
@@ -668,21 +680,57 @@ const getResultMessage = () => {
 
 const getClassStatusLabel = (classItem: any): string => {
   // Verificar si el backend envió el estado
-  if (classItem.is_active === true || classItem.status === 'active') {
-    return '(Activa)'
-  }
-  if (classItem.is_active === false || classItem.status === 'finished') {
-    return '(Finalizada)'
-  }
-  // Fallback: verificar manualmente
   if (!classItem.end_time || !classItem.start_time) return '(Estado desconocido)'
+  
   const now = new Date()
   const startTime = new Date(classItem.start_time)
   const endTime = new Date(classItem.end_time)
-  if (startTime <= now && now < endTime) {
-    return '(Activa)'
+  
+  // Clase ya terminó
+  if (now >= endTime) {
+    return '(Finalizada)'
   }
-  return '(Finalizada)'
+  
+  // Clase está en curso
+  if (now >= startTime && now < endTime) {
+    return '(En curso)'
+  }
+  
+  // Clase aún no comienza
+  if (now < startTime) {
+    return '(Próxima)'
+  }
+  
+  return '(Estado desconocido)'
+}
+
+const getClassStatus = (classItem: any): 'finished' | 'active' | 'upcoming' | 'unknown' => {
+  if (!classItem.end_time || !classItem.start_time) return 'unknown'
+  
+  const now = new Date()
+  const startTime = new Date(classItem.start_time)
+  const endTime = new Date(classItem.end_time)
+  
+  if (now >= endTime) return 'finished'
+  if (now >= startTime && now < endTime) return 'active'
+  if (now < startTime) return 'upcoming'
+  
+  return 'unknown'
+}
+
+const getClassOptionClass = (classItem: any): string => {
+  const status = getClassStatus(classItem)
+  
+  switch (status) {
+    case 'active':
+      return 'text-green-600 font-semibold'
+    case 'upcoming':
+      return 'text-blue-600'
+    case 'finished':
+      return 'text-gray-500'
+    default:
+      return 'text-gray-700'
+  }
 }
 
 // ==================== QR Functions ====================

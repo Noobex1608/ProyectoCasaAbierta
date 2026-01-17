@@ -62,56 +62,69 @@
       <!-- Quick Actions -->
       <div class="bg-white rounded-lg border border-gray-200 p-6 mb-8">
         <h2 class="text-xl font-semibold text-[#d63031] mb-4">
-          Acciones Rapidas
+          Acciones Rápidas
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <button
             @click="openAddStudentModal"
-            class="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+            class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
           >
-            <span class="text-2xl mr-3 text-gray-600">
-              <FontAwesomeIcon :icon="['fas', 'user-plus']" />
-            </span>
-            <div class="text-left">
-              <p class="font-medium text-gray-800">Anadir Estudiante</p>
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'user-plus']" class="text-lg" />
+            </div>
+            <div class="text-left flex-1">
+              <p class="font-medium text-gray-800">Añadir Estudiante</p>
               <p class="text-xs text-gray-500">De los registrados</p>
             </div>
           </button>
 
           <button
             @click="openCreateSessionModal"
-            class="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+            class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
           >
-            <span class="text-2xl mr-3 text-gray-600">
-              <FontAwesomeIcon :icon="['fas', 'file-pen']" />
-            </span>
-            <div class="text-left">
-              <p class="font-medium text-gray-800">Iniciar Sesion</p>
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-green-100 text-green-600 rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'file-pen']" class="text-lg" />
+            </div>
+            <div class="text-left flex-1">
+              <p class="font-medium text-gray-800">Iniciar Sesión</p>
               <p class="text-xs text-gray-500">Nueva clase</p>
             </div>
           </button>
 
           <button
             @click="$router.push(`/courses/${courseId}/attendance`)"
-            class="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+            class="flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-all duration-200"
           >
-            <span class="text-2xl mr-3 text-gray-600">
-              <FontAwesomeIcon :icon="['fas', 'camera']" />
-            </span>
-            <div class="text-left">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-purple-100 text-purple-600 rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'camera']" class="text-lg" />
+            </div>
+            <div class="text-left flex-1">
               <p class="font-medium text-gray-800">Tomar Asistencia</p>
-              <p class="text-xs text-gray-500">Verificacion facial</p>
+              <p class="text-xs text-gray-500">Verificación facial</p>
+            </div>
+          </button>
+
+          <button
+            @click="$router.push(`/courses/${courseId}/attendance`)"
+            class="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200"
+          >
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'clipboard-check']" class="text-lg" />
+            </div>
+            <div class="text-left flex-1">
+              <p class="font-medium text-gray-800">Ver Asistencia</p>
+              <p class="text-xs text-gray-500">Registros y reportes</p>
             </div>
           </button>
 
           <button
             @click="$router.push(`/courses/${courseId}/emotions`)"
-            class="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+            class="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
           >
-            <span class="text-2xl mr-3 text-gray-600">
-              <FontAwesomeIcon :icon="['fas', 'masks-theater']" />
-            </span>
-            <div class="text-left">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-amber-100 text-amber-600 rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'masks-theater']" class="text-lg" />
+            </div>
+            <div class="text-left flex-1">
               <p class="font-medium text-gray-800">Analizar Emociones</p>
               <p class="text-xs text-gray-500">Estado emocional</p>
             </div>
@@ -119,12 +132,12 @@
 
           <button
             @click="openQRModal"
-            class="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all duration-200"
+            class="flex items-center gap-3 p-4 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 hover:border-sky-300 transition-all duration-200"
           >
-            <span class="text-2xl mr-3 text-blue-600">
-              <FontAwesomeIcon :icon="['fas', 'qrcode']" />
-            </span>
-            <div class="text-left">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-sky-100 text-sky-600 rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'qrcode']" class="text-lg" />
+            </div>
+            <div class="text-left flex-1">
               <p class="font-medium text-gray-800">Generar QR</p>
               <p class="text-xs text-gray-500">Asistencia por código</p>
             </div>
@@ -163,25 +176,25 @@
                 @click="openAddStudentModal"
                 class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 text-sm font-medium inline-flex items-center gap-2"
               >
-                <FontAwesomeIcon :icon="['fas', 'plus']" />
-                Anadir Estudiante
+                <FontAwesomeIcon :icon="['fas', 'plus']" class="text-sm" />
+                Añadir Estudiante
               </button>
             </div>
 
             <div v-if="students.length === 0" class="text-center py-12 text-gray-500">
-              <div class="text-6xl mb-4 text-gray-300">
-                <FontAwesomeIcon :icon="['fas', 'users']" />
+              <div class="w-24 h-24 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
+                <FontAwesomeIcon :icon="['fas', 'users']" class="text-5xl text-gray-300" />
               </div>
               <p class="text-lg mb-2">No hay estudiantes en esta materia</p>
               <p class="text-sm mb-4 text-gray-400">
-                Los estudiantes deben ser registrados por la secretaria antes de anadirlos aqui
+                Los estudiantes deben ser registrados por la secretaría antes de añadirlos aquí
               </p>
               <button
                 @click="openAddStudentModal"
                 class="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 inline-flex items-center gap-2"
               >
-                <FontAwesomeIcon :icon="['fas', 'plus']" />
-                Anadir Estudiantes Registrados
+                <FontAwesomeIcon :icon="['fas', 'plus']" class="text-sm" />
+                Añadir Estudiantes Registrados
               </button>
             </div>
             <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -212,16 +225,16 @@
           <!-- Sessions Tab -->
           <div v-if="activeTab === 'sessions'">
             <div v-if="sessions.length === 0" class="text-center py-12 text-gray-500">
-              <div class="text-6xl mb-4 text-gray-300">
-                <FontAwesomeIcon :icon="['fas', 'calendar-days']" />
+              <div class="w-24 h-24 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
+                <FontAwesomeIcon :icon="['fas', 'calendar-days']" class="text-5xl text-gray-300" />
               </div>
               <p class="text-lg mb-4">No hay sesiones de clase</p>
               <button
                 @click="openCreateSessionModal"
                 class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
               >
-                <FontAwesomeIcon :icon="['fas', 'file-pen']" />
-                Crear Primera Sesion
+                <FontAwesomeIcon :icon="['fas', 'file-pen']" class="text-sm" />
+                Crear Primera Sesión
               </button>
             </div>
             <div v-else class="space-y-3">
@@ -263,10 +276,12 @@
       <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <FontAwesomeIcon :icon="['fas', 'plus']" class="text-[#b81a16]" />
-            Anadir Estudiante a la Materia
+            <div class="w-8 h-8 flex items-center justify-center bg-[#b81a16] text-white rounded-lg">
+              <FontAwesomeIcon :icon="['fas', 'plus']" class="text-sm" />
+            </div>
+            Añadir Estudiante a la Materia
           </h3>
-          <button @click="showAddStudentModal = false" class="text-gray-400 hover:text-gray-600">
+          <button @click="showAddStudentModal = false" class="text-gray-400 hover:text-gray-600 text-xl">
             <FontAwesomeIcon :icon="['fas', 'xmark']" />
           </button>
         </div>
@@ -274,41 +289,43 @@
         <!-- Campo de busqueda -->
         <div class="mb-4">
           <div class="relative">
-            <FontAwesomeIcon :icon="['fas', 'magnifying-glass']" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <FontAwesomeIcon :icon="['fas', 'magnifying-glass']" class="text-sm" />
+            </div>
             <input
               v-model="studentSearchQuery"
               type="text"
-              placeholder="Buscar por nombre, cedula o email..."
-              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent"
+              placeholder="Buscar por nombre, cédula o email..."
+              class="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent"
             />
             <button
               v-if="studentSearchQuery"
               @click="studentSearchQuery = ''"
               class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              <FontAwesomeIcon :icon="['fas', 'xmark']" />
+              <FontAwesomeIcon :icon="['fas', 'xmark']" class="text-sm" />
             </button>
           </div>
         </div>
         
         <div v-if="availableStudents.length === 0" class="text-center py-8 text-gray-500">
-          <div class="text-5xl mb-4 text-gray-300">
-            <FontAwesomeIcon :icon="['fas', 'inbox']" />
+          <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
+            <FontAwesomeIcon :icon="['fas', 'inbox']" class="text-4xl text-gray-300" />
           </div>
           <p class="text-lg mb-2">No hay estudiantes disponibles</p>
-          <p class="text-sm">Todos los estudiantes ya estan inscritos en esta materia</p>
+          <p class="text-sm">Todos los estudiantes ya están inscritos en esta materia</p>
           <p class="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1">
-            <FontAwesomeIcon :icon="['fas', 'lightbulb']" class="text-yellow-500" />
-            Contacta a la secretaria para registrar nuevos estudiantes
+            <FontAwesomeIcon :icon="['fas', 'lightbulb']" class="text-sm text-yellow-500" />
+            Contacta a la secretaría para registrar nuevos estudiantes
           </p>
         </div>
         
         <div v-else-if="filteredAvailableStudents.length === 0" class="text-center py-8 text-gray-500">
-          <div class="text-5xl mb-4 text-gray-300">
-            <FontAwesomeIcon :icon="['fas', 'magnifying-glass']" />
+          <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
+            <FontAwesomeIcon :icon="['fas', 'magnifying-glass']" class="text-4xl text-gray-300" />
           </div>
           <p class="text-lg mb-2">No se encontraron resultados</p>
-          <p class="text-sm">Prueba con otro termino de busqueda</p>
+          <p class="text-sm">Prueba con otro término de búsqueda</p>
         </div>
         
         <div v-else class="flex-1 overflow-y-auto space-y-2">

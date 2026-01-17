@@ -179,21 +179,33 @@ class GoogleCalendarService {
       end_time: string
     }>
   }): Promise<any[]> {
+    console.log('📅 createCourseEvent llamado con:', {
+      course_name: courseData.course_name,
+      course_code: courseData.course_code,
+      schedule_count: courseData.schedule?.length || 0
+    })
+    
     if (!this.isAuthenticated()) {
+      console.log('❌ No autenticado, solicitando autorización...')
       await this.requestAuthorization()
     }
 
     // Si no hay horarios definidos, crear un evento simple
     if (!courseData.schedule || courseData.schedule.length === 0) {
+      console.log('📝 Creando evento simple (sin horarios)')
       return [await this.createSingleEvent(courseData)]
     }
 
     // Crear eventos recurrentes para cada horario
+    console.log(`📝 Creando ${courseData.schedule.length} eventos recurrentes`)
     const events = []
     for (const schedule of courseData.schedule) {
+      console.log('➡️ Creando evento para:', schedule)
       const event = await this.createRecurringEvent(courseData, schedule)
+      console.log('✅ Evento creado:', event.id)
       events.push(event)
     }
+    console.log(`✅ Total de eventos creados: ${events.length}`)
     return events
   }
 
@@ -347,6 +359,113 @@ class GoogleCalendarService {
     } catch (error) {
       console.error('Error fetching calendar events:', error)
       return []
+    }
+  }
+
+  /**
+   * Busca eventos de una materia específica por código de curso
+   */
+  async findCourseEvents(courseCode: string): Promise<any[]> {
+    if (!this.isAuthenticated()) {
+      return []
+    }
+
+    try {
+      // Buscar todos los eventos recientes
+      const recurringResponse = await this.gapi.client.calendar.events.list({
+        calendarId: CALENDAR_ID,
+        showDeleted: false,
+        singleEvents: false, // Para obtener eventos recurrentes maestros
+        maxResults: 2500, // Aumentar el límite
+        timeMin: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString() // Últimos 365 días
+      })
+      
+      const allEvents = recurringResponse.result.items || []
+      
+      // Filtrar eventos que contengan el código del curso en la descripción
+      const filteredEvents = allEvents.filter((event: any) => {
+        const description = event.description || ''
+        // Buscar el patrón "Código: XXX" en la descripción
+        return description.includes(`Código: ${courseCode}`)
+      })
+      
+      console.log(`🔍 Encontrados ${filteredEvents.length} eventos para código ${courseCode}`)
+      if (filteredEvents.length > 0) {
+        console.log('📋 Eventos encontrados:', filteredEvents.map((e: any) => ({
+          id: e.id,
+          summary: e.summary,
+          recurring: !!e.recurrence
+        })))
+      }
+      
+      return filteredEvents
+    } catch (error) {
+      console.error('Error finding course events:', error)
+      return []
+    }
+  }
+
+  /**
+   * Elimina todos los eventos de una materia específica
+   */
+  async deleteCourseEvents(courseCode: string): Promise<void> {
+    if (!this.isAuthenticated()) {
+      await this.requestAuthorization()
+    }
+
+    try {
+      const events = await this.findCourseEvents(courseCode)
+      
+      console.log(`🗑️ Eliminando ${events.length} eventos de ${courseCode}...`)
+      
+      // Eliminar cada evento
+      for (const event of events) {
+        try {
+          await this.gapi.client.calendar.events.delete({
+            calendarId: CALENDAR_ID,
+            eventId: event.id
+          })
+          console.log(`✅ Evento eliminado: ${event.summary}`)
+        } catch (error) {
+          console.error(`❌ Error eliminando evento ${event.id}:`, error)
+        }
+      }
+      
+      console.log(`✅ Eliminados todos los eventos de ${courseCode}`)
+    } catch (error) {
+      console.error('Error deleting course events:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Actualiza los eventos de una materia (elimina los antiguos y crea nuevos)
+   */
+  async updateCourseEvents(courseData: {
+    course_name: string
+    course_code: string
+    description?: string
+    schedule?: Array<{
+      day_of_week: number
+      start_time: string
+      end_time: string
+    }>
+  }): Promise<any[]> {
+    if (!this.isAuthenticated()) {
+      await this.requestAuthorization()
+    }
+
+    try {
+      // 1. Eliminar eventos antiguos
+      await this.deleteCourseEvents(courseData.course_code)
+      
+      // 2. Crear nuevos eventos
+      const newEvents = await this.createCourseEvent(courseData)
+      
+      return newEvents
+    } catch (error) {
+      console.error('Error updating course events:', error)
+      throw error
     }
   }
 
