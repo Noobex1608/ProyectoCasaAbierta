@@ -62,12 +62,12 @@ steps:
       - '10'
       - '--allow-unauthenticated'
 
-# Substitution variables - CONFIGURE THESE
+# Substitution variables - CONFIGURED FOR PRODUCTION
 substitutions:
-  _REGION: 'us-central1'
-  _VITE_API_BASE_URL: 'https://smart-classroom-backend-XXXXX.run.app/api/v1'
+  _REGION: 'europe-west1'
+  _VITE_API_BASE_URL: 'https://proyectocasaabierta-181683984554.europe-west1.run.app/api/v1'
   _VITE_SUPABASE_URL: 'https://dusciyonacflolbtweob.supabase.co'
-  _VITE_SUPABASE_ANON_KEY: 'your-supabase-anon-key'
+  _VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1c2NpeW9uYWNmbG9sYnR3ZW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE5NjI2NjIsImV4cCI6MjA0NzUzODY2Mn0.eyJpc3M'
 
 # Store images in Container Registry
 images:
