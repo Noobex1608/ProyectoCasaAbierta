@@ -365,6 +365,56 @@
               ✅ Los estudiantes de este curso se filtrarán automáticamente en la asistencia
             </p>
           </div>
+
+          <!-- Selector de clase programada del día -->
+          <div v-if="todayScheduledClasses.length > 0">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Clase Programada de Hoy *
+            </label>
+            <div class="space-y-2">
+              <div
+                v-for="(scheduledClass, index) in todayScheduledClasses"
+                :key="index"
+                @click="selectScheduledClass(scheduledClass)"
+                :class="[
+                  'p-4 border-2 rounded-lg cursor-pointer transition-all',
+                  sessionForm.selectedSchedule === scheduledClass
+                    ? 'border-[#b81a16] bg-[#b81a16]/5'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                ]"
+              >
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-semibold text-gray-900">
+                      {{ getDayName(scheduledClass.day_of_week) }} - {{ scheduledClass.start_time }} a {{ scheduledClass.end_time }}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                      Duración: {{ calculateClassDuration(scheduledClass.start_time, scheduledClass.end_time) }}
+                    </p>
+                  </div>
+                  <div
+                    v-if="sessionForm.selectedSchedule === scheduledClass"
+                    class="h-6 w-6 rounded-full bg-[#b81a16] flex items-center justify-center text-white text-xs"
+                  >
+                    ✓
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensaje si no hay clases programadas hoy -->
+          <div v-else class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <span class="text-yellow-600">⚠️</span>
+              <div>
+                <p class="text-sm font-medium text-yellow-800">No hay clases programadas para hoy</p>
+                <p class="text-xs text-yellow-700 mt-1">
+                  Puedes crear una sesión manual ingresando los datos a continuación
+                </p>
+              </div>
+            </div>
+          </div>
           
           <!-- Nombre de la sesión -->
           <div>
@@ -380,7 +430,7 @@
             />
           </div>
 
-          <!-- Fecha -->
+          <!-- Fecha (solo lectura si hay clase programada) -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Fecha *
@@ -388,12 +438,16 @@
             <input
               v-model="sessionForm.date"
               type="date"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent"
+              :readonly="sessionForm.selectedSchedule !== null"
+              :class="[
+                'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent',
+                sessionForm.selectedSchedule ? 'bg-gray-100 cursor-not-allowed' : ''
+              ]"
               required
             />
           </div>
 
-          <!-- Hora de Inicio -->
+          <!-- Hora de Inicio (solo lectura si hay clase programada) -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Hora de Inicio *
@@ -401,20 +455,29 @@
             <input
               v-model="sessionForm.startTime"
               type="time"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent"
+              :readonly="sessionForm.selectedSchedule !== null"
+              :class="[
+                'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent',
+                sessionForm.selectedSchedule ? 'bg-gray-100 cursor-not-allowed' : ''
+              ]"
               required
             />
           </div>
 
-          <!-- Hora de Fin (Opcional) -->
+          <!-- Hora de Fin (solo lectura si hay clase programada) -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Hora de Fin (Opcional)
+              Hora de Fin *
             </label>
             <input
               v-model="sessionForm.endTime"
               type="time"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent"
+              :readonly="sessionForm.selectedSchedule !== null"
+              :class="[
+                'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b81a16] focus:border-transparent',
+                sessionForm.selectedSchedule ? 'bg-gray-100 cursor-not-allowed' : ''
+              ]"
+              required
             />
           </div>
 
@@ -648,11 +711,30 @@ const filteredAvailableStudents = computed(() => {
 })
 
 const showCreateSessionModal = ref(false)
-const sessionForm = reactive({
+const sessionForm = reactive<{
+  name: string
+  date: string
+  startTime: string
+  endTime: string
+  selectedSchedule: any | null
+}>({
   name: '',
   date: '',
   startTime: '',
-  endTime: ''
+  endTime: '',
+  selectedSchedule: null
+})
+
+// Clases programadas para hoy
+const todayScheduledClasses = computed(() => {
+  if (!course.value?.schedule || course.value.schedule.length === 0) {
+    return []
+  }
+  
+  const today = new Date()
+  const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay() // 1=Lunes, 7=Domingo
+  
+  return course.value.schedule.filter(schedule => schedule.day_of_week === dayOfWeek)
 })
 
 // QR Modal
@@ -889,16 +971,61 @@ const formatDateTime = (dateString: string) => {
   }).format(date)
 }
 
+const selectScheduledClass = (schedule: any) => {
+  sessionForm.selectedSchedule = schedule
+  
+  const now = new Date()
+  const tzOffset = now.getTimezoneOffset() * 60000
+  const localDate = new Date(now.getTime() - tzOffset).toISOString().slice(0, 10)
+  
+  sessionForm.date = localDate
+  sessionForm.startTime = schedule.start_time
+  sessionForm.endTime = schedule.end_time
+  sessionForm.name = `Clase de ${course.value?.course_name || 'Materia'}`
+}
+
+const calculateClassDuration = (startTime: string, endTime: string): string => {
+  const [startHour, startMin] = startTime.split(':').map(Number)
+  const [endHour, endMin] = endTime.split(':').map(Number)
+  
+  const startMinutes = (startHour || 0) * 60 + (startMin || 0)
+  const endMinutes = (endHour || 0) * 60 + (endMin || 0)
+  const durationMinutes = endMinutes - startMinutes
+  
+  const hours = Math.floor(durationMinutes / 60)
+  const minutes = durationMinutes % 60
+  
+  if (hours > 0 && minutes > 0) {
+    return `${hours}h ${minutes}min`
+  } else if (hours > 0) {
+    return `${hours}h`
+  } else {
+    return `${minutes}min`
+  }
+}
+
+const getDayName = (dayOfWeek: number): string => {
+  const days = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+  return days[dayOfWeek] || ''
+}
+
 const openCreateSessionModal = () => {
   const now = new Date()
   const tzOffset = now.getTimezoneOffset() * 60000
   const localDate = new Date(now.getTime() - tzOffset).toISOString().slice(0, 10)
   const localTime = new Date(now.getTime() - tzOffset).toISOString().slice(11, 16)
   
-  sessionForm.name = ''
+  sessionForm.name = `Clase de ${course.value?.course_name || 'Materia'}`
   sessionForm.date = localDate
   sessionForm.startTime = localTime
   sessionForm.endTime = ''
+  sessionForm.selectedSchedule = null
+  
+  // Auto-seleccionar la primera clase programada del día si existe
+  if (todayScheduledClasses.value.length > 0) {
+    selectScheduledClass(todayScheduledClasses.value[0])
+  }
+  
   showCreateSessionModal.value = true
 }
 

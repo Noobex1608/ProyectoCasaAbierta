@@ -13,6 +13,17 @@ export interface Course {
   description?: string
   teacher_id?: string
   created_at: string
+  metadata?: {
+    schedule?: CourseSchedule[]
+    [key: string]: any
+  } | null
+  schedule?: CourseSchedule[]
+}
+
+export interface CourseSchedule {
+  day_of_week: number // 1=Lunes, 2=Martes, ..., 6=Sábado
+  start_time: string // HH:mm formato 24h
+  end_time: string   // HH:mm formato 24h
 }
 
 export interface Student {

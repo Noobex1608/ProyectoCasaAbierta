@@ -3,13 +3,42 @@
  */
 
 import { supabase } from './supabase'
-import type { Course } from '@/types'
+import type { Course, CourseSchedule } from '@/types'
+
+// Storage key para horarios en localStorage
+const SCHEDULES_STORAGE_KEY = 'course_schedules'
+
+// Funciones auxiliares para localStorage
+const getStoredSchedules = (): Record<string, CourseSchedule[]> => {
+  try {
+    const stored = localStorage.getItem(SCHEDULES_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+const saveScheduleForCourse = (courseId: string, schedule: CourseSchedule[]) => {
+  const schedules = getStoredSchedules()
+  schedules[courseId] = schedule
+  localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules))
+}
+
+const getScheduleForCourse = (courseId: string): CourseSchedule[] | undefined => {
+  const schedules = getStoredSchedules()
+  return schedules[courseId]
+}
 
 export const coursesService = {
   /**
    * Create a new course (Supabase)
    */
-  async createCourse(data: { course_name: string; course_code: string; description?: string }): Promise<Course> {
+  async createCourse(data: { 
+    course_name: string
+    course_code: string
+    description?: string
+    schedule?: CourseSchedule[]
+  }): Promise<Course> {
     const { data: { user } } = await supabase.auth.getUser()
     
     const { data: course, error } = await supabase
@@ -24,6 +53,13 @@ export const coursesService = {
       .single()
 
     if (error) throw error
+    
+    // Guardar schedule en localStorage si existe
+    if (data.schedule && data.schedule.length > 0) {
+      saveScheduleForCourse(course.id, data.schedule)
+      course.schedule = data.schedule
+    }
+    
     return course
   },
 
@@ -40,7 +76,17 @@ export const coursesService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    // Agregar schedules desde localStorage
+    const courses = (data || []).map(course => {
+      const schedule = getScheduleForCourse(course.id)
+      if (schedule) {
+        return { ...course, schedule }
+      }
+      return course
+    })
+    
+    return courses
   },
 
   /**
@@ -54,21 +100,51 @@ export const coursesService = {
       .single()
 
     if (error) throw error
+    
+    // Agregar schedule desde localStorage
+    const schedule = getScheduleForCourse(courseId)
+    if (schedule) {
+      data.schedule = schedule
+    }
+    
     return data
   },
 
   /**
    * Update course
    */
-  async updateCourse(courseId: string, updates: Partial<Course>): Promise<Course> {
+  async updateCourse(courseId: string, updates: Partial<Course> & { schedule?: CourseSchedule[] }): Promise<Course> {
+    // Separar schedule de los otros campos
+    const { schedule, ...courseUpdates } = updates
+    
     const { data, error } = await supabase
       .from('courses')
-      .update(updates)
+      .update(courseUpdates)
       .eq('id', courseId)
       .select()
       .single()
 
     if (error) throw error
+    
+    // Actualizar schedule en localStorage si se proporciona
+    if (schedule !== undefined) {
+      if (schedule && schedule.length > 0) {
+        saveScheduleForCourse(courseId, schedule)
+        data.schedule = schedule
+      } else {
+        // Eliminar schedule si está vacío
+        const schedules = getStoredSchedules()
+        delete schedules[courseId]
+        localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules))
+      }
+    } else {
+      // Mantener el schedule existente
+      const existingSchedule = getScheduleForCourse(courseId)
+      if (existingSchedule) {
+        data.schedule = existingSchedule
+      }
+    }
+    
     return data
   },
 
@@ -82,5 +158,10 @@ export const coursesService = {
       .eq('id', courseId)
 
     if (error) throw error
+    
+    // Eliminar schedule de localStorage
+    const schedules = getStoredSchedules()
+    delete schedules[courseId]
+    localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules))
   }
 }
