@@ -38,8 +38,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Pre-download DeepFace models during build (NOT at runtime)
 # This makes the image larger but eliminates cold start delays
 RUN python -c "from deepface import DeepFace; \
-    DeepFace.build_model('Facenet512'); \
-    DeepFace.build_model('retinaface'); \
+    DeepFace.build_model(task='facial_recognition', model_name='Facenet512'); \
+    DeepFace.build_model(task='face_detector', model_name='retinaface'); \
     print('Models downloaded successfully')"
 
 # Copy application code
