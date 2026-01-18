@@ -8,26 +8,25 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '-f'
+      - 'Servidor/Dockerfile'
       - '-t'
       - 'gcr.io/$PROJECT_ID/smart-classroom-backend:$COMMIT_SHA'
       - '-t'
       - 'gcr.io/$PROJECT_ID/smart-classroom-backend:latest'
-      - '.'
-    dir: 'Servidor'
+      - 'Servidor'
 
   # Step 2: Push the Docker image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/$PROJECT_ID/smart-classroom-backend:$COMMIT_SHA'
-    dir: 'Servidor'
 
   # Step 3: Push latest tag
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/$PROJECT_ID/smart-classroom-backend:latest'
-    dir: 'Servidor'
 
   # Step 4: Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
