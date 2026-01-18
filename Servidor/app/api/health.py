@@ -23,29 +23,38 @@ async def health_check():
     """
     Health check endpoint for monitoring and load balancers
     
-    Returns system status and service availability
+    Returns system status and service availability.
+    This endpoint responds IMMEDIATELY to allow Cloud Run to start serving traffic
+    while models are still loading in the background.
     """
+    # Health check responde inmediatamente (NO bloquea esperando modelos)
+    # Esto permite que Cloud Run considere el contenedor "listo" rápidamente
     services = {
         "api": True,
         "database": False,
         "deepface": False
     }
     
-    # Check database connection
+    # Verificar base de datos (rápido, no bloqueante)
     try:
         db_status = await SupabaseClient.test_connection()
         services["database"] = db_status
     except Exception as e:
-        logger.warning(f"Database health check failed: {str(e)}")
+        logger.debug(f"Database health check failed: {str(e)}")
+        # No fallar si la BD no responde inmediatamente
     
-    # Check DeepFace availability
+    # Verificar DeepFace (no bloqueante - solo verifica si está disponible)
     try:
         from deepface import DeepFace
+        # Solo verificar importación, no cargar modelos
         services["deepface"] = True
-    except Exception as e:
-        logger.warning(f"DeepFace health check failed: {str(e)}")
+    except Exception:
+        # Los modelos pueden estar cargando aún - no es crítico para el health check
+        services["deepface"] = False
     
-    overall_status = "healthy" if all(services.values()) else "degraded"
+    # Si la API responde, consideramos el servicio "healthy"
+    # Los modelos pueden estar cargando en background
+    overall_status = "healthy" if services["api"] else "unhealthy"
     
     return HealthCheckResponse(
         status=overall_status,

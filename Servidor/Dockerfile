@@ -35,12 +35,12 @@ RUN pip install --upgrade pip
 COPY requirements.docker.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download DeepFace models during build (NOT at runtime)
-# This makes the image larger but eliminates cold start delays
-RUN python -c "from deepface import DeepFace; \
-    DeepFace.build_model(task='facial_recognition', model_name='Facenet512'); \
-    DeepFace.build_model(task='face_detector', model_name='retinaface'); \
-    print('Models downloaded successfully')"
+# Pre-download DeepFace models during build (DISABLED for faster startup)
+# Models will be downloaded on first use to avoid Cloud Run timeout
+# RUN python -c "from deepface import DeepFace; \
+#     DeepFace.build_model(task='facial_recognition', model_name='Facenet512'); \
+#     DeepFace.build_model(task='face_detector', model_name='retinaface'); \
+#     print('Models downloaded successfully')"
 
 # Copy application code
 COPY ./app ./app
@@ -48,9 +48,5 @@ COPY ./app ./app
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the application (Cloud Run provides PORT env variable)
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --log-level info
