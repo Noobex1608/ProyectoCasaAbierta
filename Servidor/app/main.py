@@ -26,21 +26,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"API Prefix: {settings.API_PREFIX}")
     
-    # Test database connection
-    from app.db.supabase_client import SupabaseClient
-    try:
-        db_status = await SupabaseClient.test_connection()
-        if db_status:
-            logger.info("✓ Database connection established")
-        else:
-            logger.warning("⚠ Database connection failed")
-    except Exception as e:
-        logger.error(f"✗ Database connection error: {str(e)}")
-    
-    # Los modelos de DeepFace se cargarán bajo demanda para evitar timeout en Cloud Run
-    # Esto hace que la primera petición sea más lenta (~30-60s) pero permite que el contenedor inicie
-    logger.info("⚠ Modelos de IA se cargarán bajo demanda (lazy loading)")
-    logger.info("⚡ Primera petición de reconocimiento facial será más lenta")
+    # Database y modelos se verificarán bajo demanda (lazy loading)
+    # Esto permite que Cloud Run inicie el contenedor rápidamente
+    logger.info("⚡ Startup rápido - verificaciones diferidas a primera petición")
     
     logger.info("="*80)
     logger.info("🚀 Application startup complete")
