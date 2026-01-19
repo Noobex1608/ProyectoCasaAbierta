@@ -135,6 +135,7 @@ class QRService:
             
             # Calculate expiry time (24 hours for testing, or class end time, whichever is later)
             end_time = datetime.fromisoformat(class_info['end_time'].replace('Z', '+00:00'))
+            end_time = end_time.astimezone(ECUADOR_TZ)  # Convert to Ecuador timezone
             now = datetime.now(ECUADOR_TZ)
             expires_at = max(end_time, now + timedelta(hours=24))  # At least 24 hours validity
             
