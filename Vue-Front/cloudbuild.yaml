@@ -15,12 +15,10 @@ steps:
           --build-arg VITE_API_BASE_URL="$$API_BASE_URL" \
           --build-arg VITE_SUPABASE_URL="$$SUPABASE_URL" \
           --build-arg VITE_SUPABASE_KEY="$$SUPABASE_ANON_KEY" \
-          --build-arg VITE_GOOGLE_API_KEY="$$GOOGLE_API_KEY" \
-          --build-arg VITE_GOOGLE_CLIENT_ID="$$GOOGLE_CLIENT_ID" \
           -t gcr.io/$PROJECT_ID/smart-classroom-frontend:$BUILD_ID \
           -t gcr.io/$PROJECT_ID/smart-classroom-frontend:latest .
     dir: 'Vue-Front'
-    secretEnv: ['API_BASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'GOOGLE_API_KEY', 'GOOGLE_CLIENT_ID']
+    secretEnv: ['API_BASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']
 
   # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
@@ -56,10 +54,6 @@ availableSecrets:
       env: 'SUPABASE_URL'
     - versionName: projects/$PROJECT_ID/secrets/supabase-anon-key/versions/latest
       env: 'SUPABASE_ANON_KEY'
-    - versionName: projects/$PROJECT_ID/secrets/google-api-key/versions/latest
-      env: 'GOOGLE_API_KEY'
-    - versionName: projects/$PROJECT_ID/secrets/google-client-id/versions/latest
-      env: 'GOOGLE_CLIENT_ID'
 
 options:
   logging: CLOUD_LOGGING_ONLY
