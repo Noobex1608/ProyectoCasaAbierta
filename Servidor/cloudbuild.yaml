@@ -57,7 +57,7 @@ steps:
       - '5'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'ENVIRONMENT=production,DEBUG=False,LOG_LEVEL=INFO,API_HOST=0.0.0.0,API_PORT=8080,CORS_ORIGINS=*'
+      - 'ENVIRONMENT=production,DEBUG=False,LOG_LEVEL=INFO,API_HOST=0.0.0.0,API_PORT=8080,CORS_ORIGINS=https://smart-classroom-frontend-181683984554.europe-west1.run.app,http://localhost:5173,http://localhost:8080'
       - '--update-secrets'
       - 'SUPABASE_URL=SUPABASE_URL:latest,SUPABASE_KEY=SUPABASE_KEY:latest,SUPABASE_SERVICE_KEY=SUPABASE_SERVICE_KEY:latest,DATABASE_URL=DATABASE_URL:latest,SECRET_KEY=SECRET_KEY:latest'
       - '--port'
