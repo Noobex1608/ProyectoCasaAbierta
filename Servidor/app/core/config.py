@@ -76,7 +76,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         """Convert CORS_ORIGINS string to list"""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        # If * is present, return it as a single-element list for FastAPI
+        if "*" in origins:
+            return ["*"]
+        return origins
 
 
 @lru_cache()
